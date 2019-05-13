@@ -1,0 +1,20 @@
+footer {
+    text-align: center;
+    color: gray;
+}
+
+.ep-block {
+    line-height: 2em;
+}
+
+.ep-arguments {
+    line-height: 2em;
+}
+
+.ep-title {
+    font-weight: bold;
+}
+
+.arg-name {
+    text-transform: uppercase;
+}
