@@ -59,10 +59,30 @@ body {
     font-size: 0.9em;
 }
 
-#controls {
-    float: right;
+.optionsContainer {
+    font-size: 1.25rem;
+    display: inline-block;
+    margin-left: 1rem;
+    margin-top: 0.5rem;
 }
 
+.optionsContainer > select {
+    display: block;
+    min-width: 15rem;
+}
+
+#controlsContainer {
+    font-size: 1.25rem;
+    float: right;
+    margin-right: 1rem;
+    margin-top: 0.5rem;
+    grid-template-columns: repeat(var(3), 250px);
+    grid-template-rows: repeat(var(3), 250px);
+}
+
+.controls {
+    display: inline-block;
+}
 .cell {
     background-color: rgb(0, 0, 0);
     border: solid var(--wallWidth) var(--wallColor);

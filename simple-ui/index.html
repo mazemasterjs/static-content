@@ -13,30 +13,47 @@
 
     <body onresize="resizeGrid(curMaze)">
         <div id="loadingScreen">
-            <p><i class="material-icons">cloud_download</i> Loading Maze <i class="material-icons">cloud_download</i></p>
+            <p><i class="material-icons">cloud_download</i> <span id="loadingMessage">Loading...</span> <i class="material-icons">cloud_download</i></p>
         </div>
 
         <div id="controls">
-            <select id="selMaze"></select>
-            <select id="selTeam"></select>
-            <select id="selBot"></select>
-            <select id="selGame"></select>
-            <select id="selCmd">
-                <option value="Look">Look</option>
-                <option value="Move">Move</option>
-                <option value="Move">Jump</option>
-                <option value="Stand">Stand</option>
-                <option value="Stand">Write</option>
-            </select>
-            <button id="btnNorth">N</button>
-            <button id="btnSouth">S</button>
-            <button id="btnEast">E</button>
-            <button id="btnWest">W</button>
+            <div class="optionsContainer">
+                Maze
+                <select id="selMaze"></select>
+            </div>
+            <div class="optionsContainer">
+                Team
+                <select id="selTeam"></select>
+            </div>
+            <div class="optionsContainer">
+                Bot
+                <select id="selBot"></select>
+            </div>
+            <div id="btnLoadMaze" class="optionsContainer">
+                <button>Load Maze</button>
+            </div>
 
-            <button id="btnLoadMaze">Load Maze</button>
             <!-- <div>
                 <pre id="textRender"></pre>
             </div> -->
+            <!-- Game: <select id="selGame"></select><br /> -->
+            <!-- <select id="selCmd">
+                            <option value="Look">Look</option>
+                            <option value="Move">Move</option>
+                            <option value="Move">Jump</option>
+                            <option value="Stand">Stand</option>
+                            <option value="Stand">Write</option>
+                        </select> -->
+
+            <div id="controlsContainer">
+                <div style="text-align: center">
+                    Movement
+                </div>
+                <button id="btnNorth" class="controls">N</button>
+                <button id="btnWest" class="controls">W</button>
+                <button id="btnEast" class="controls">E</button>
+                <button id="btnSouth" class="controls">S</button>
+            </div>
         </div>
 
         <div id="mazeView" class="grid-container"></div>
@@ -45,7 +62,7 @@
             <script>
                 $('#btnLoadMaze').click(function() {
                     loadMaze($('#selMaze option:selected').val());
-                    //                    startBotGame($('#selTeam option:selected').val(), $('#selBot option:selected').val(), $('#selMaze option:selected').val());
+                    // startBotGame($('#selTeam option:selected').val(), $('#selBot option:selected').val(), $('#selMaze option:selected').val());
                 });
 
                 $('#selTeam').change(function() {
