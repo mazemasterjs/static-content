@@ -1,0 +1,125 @@
+:root {
+    --rows: 5;
+    --cols: 5;
+    --wallWidth: 1px;
+    --edgeWidth: 1px;
+    --exitWidth: 1px;
+    --mazeViewSize: 50vw;
+    --maxMazeViewHeight: 90vh;
+    --cellIconFontSize: 1em;
+    --wallColor: rgb(173, 173, 173);
+    --exitColor: rgba(124, 124, 124, 0.3);
+}
+
+body {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 12px;
+    background-color: rgb(0, 0, 0);
+    color: antiquewhite;
+}
+
+.grid-container {
+    min-width: 285px;
+    max-height: var(--maxMazeViewHeight);
+    width: var(--mazeViewSize);
+    height: var(--mazeViewSize);
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 1px);
+    grid-template-rows: repeat(var(--rows), 1px);
+    grid-gap: 0px;
+}
+.grid-item {
+    display: flex;
+    padding: 0px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.8);
+    font-size: 2rem;
+}
+
+#loadingScreen {
+    display: none;
+    position: fixed;
+    text-align: center;
+    width: 100vw;
+    height: 100vh;
+}
+#loadingScreen > p {
+    line-height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.95);
+    font-size: 6em;
+    color: rgb(255, 0, 0);
+    margin: 0;
+}
+#loadingScreen > p > i {
+    position: relative;
+    top: 0.17em;
+    font-size: 0.9em;
+}
+
+#controls {
+    float: right;
+}
+
+.cell {
+    background-color: rgb(0, 0, 0);
+    border: solid var(--wallWidth) var(--wallColor);
+    font-size: var(--cellIconFontSize);
+}
+
+.player {
+    background-image: url('../images/rat-svgrepo-com.svg');
+    background-size: 50%;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.cStart {
+    border-top: dotted var(--wallWidth) rgb(255, 0, 0);
+    color: rgba(255, 0, 0);
+    padding-bottom: 1em;
+}
+
+.cFinish {
+    border-bottom: dotted var(--wallWidth) rgb(0, 255, 0);
+    color: rgba(0, 255, 0);
+    padding-top: 1em;
+}
+
+.cPath {
+    color: rgba(255, 196, 0, 0.5);
+}
+
+.ceNorth {
+    border-top: dashed var(--exitWidth) var(--exitColor);
+}
+
+.ceSouth {
+    border-bottom: dashed var(--exitWidth) var(--exitColor);
+}
+
+.ceEast {
+    border-right: dashed var(--exitWidth) var(--exitColor);
+}
+
+.ceWest {
+    border-left: dashed var(--exitWidth) var(--exitColor);
+}
+
+.cwNorth {
+    border-top: solid var(--edgeWidth) var(--wallColor);
+}
+
+.cwSouth {
+    border-bottom: solid var(--edgeWidth) var(--wallColor);
+}
+
+.cwEast {
+    border-right: solid var(--edgeWidth) var(--wallColor);
+}
+
+.cwWest {
+    border-left: solid var(--edgeWidth) var(--wallColor);
+}

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Simple UI</title>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css?family=Quicksand&display=swap" rel="stylesheet" />
+        <link href="css/simple-ui.css" rel="stylesheet" type="text/css" />
+        <script src="javascript/jquery-3.4.1.js" type="text/javascript"></script>
+        <script src="javascript/enums.mjs" type="text/javascript"></script>
+        <script src="javascript/renderFuncs.js" type="text/javascript"></script>
+        <script src="javascript/simple-ui.js" type="text/javascript"></script>
+    </head>
+
+    <body onresize="resizeGrid(curMaze)">
+        <div id="loadingScreen">
+            <p><i class="material-icons">cloud_download</i> Loading Maze <i class="material-icons">cloud_download</i></p>
+        </div>
+
+        <div id="controls">
+            <select id="selMaze"></select>
+            <select id="selTeam"></select>
+            <select id="selBot"></select>
+            <select id="selGame"></select>
+            <select id="selCmd">
+                <option value="Look">Look</option>
+                <option value="Move">Move</option>
+                <option value="Move">Jump</option>
+                <option value="Stand">Stand</option>
+                <option value="Stand">Write</option>
+            </select>
+            <button id="btnNorth">N</button>
+            <button id="btnSouth">S</button>
+            <button id="btnEast">E</button>
+            <button id="btnWest">W</button>
+
+            <button id="btnLoadMaze">Load Maze</button>
+            <!-- <div>
+                <pre id="textRender"></pre>
+            </div> -->
+        </div>
+
+        <div id="mazeView" class="grid-container"></div>
+
+        <footer>
+            <script>
+                $('#btnLoadMaze').click(function() {
+                    loadMaze($('#selMaze option:selected').val());
+                    //                    startBotGame($('#selTeam option:selected').val(), $('#selBot option:selected').val(), $('#selMaze option:selected').val());
+                });
+
+                $('#selTeam').change(function() {
+                    loadBotSelect($('#selTeam option:selected').val());
+                });
+
+                $('#btnNorth').click(function() {
+                    movePlayer(curLoc.row - 1, curLoc.col, DIRS.NORTH);
+                });
+                $('#btnSouth').click(function() {
+                    movePlayer(curLoc.row + 1, curLoc.col, DIRS.SOUTH);
+                });
+                $('#btnEast').click(function() {
+                    movePlayer(curLoc.row, curLoc.col + 1, DIRS.EAST);
+                });
+                $('#btnWest').click(function() {
+                    movePlayer(curLoc.row, curLoc.col - 1, DIRS.WEST);
+                });
+
+                loadMazeSelect();
+                loadTeamSelect();
+                loadGameSelect();
+                loadBotSelect();
+            </script>
+        </footer>
+    </body>
+</html>
