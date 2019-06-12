@@ -57,31 +57,33 @@
 
         <footer>
             <script>
-                $('#selMaze').change(function() {
-                    loadMaze($('#selMaze option:selected').val());
-                });
+                $(document).ready(function() {
+                    $('#selMaze').change(function() {
+                        loadMaze($('#selMaze option:selected').val());
+                    });
 
-                $('#selTeam').change(function() {
-                    loadBotSelect($('#selTeam option:selected').val());
-                });
+                    $('#selTeam').change(function() {
+                        loadBotSelect($('#selTeam option:selected').val());
+                    });
 
-                $('#btnNorth').click(function() {
-                    movePlayer(curLoc.row - 1, curLoc.col, DIRS.NORTH);
-                });
-                $('#btnSouth').click(function() {
-                    movePlayer(curLoc.row + 1, curLoc.col, DIRS.SOUTH);
-                });
-                $('#btnEast').click(function() {
-                    movePlayer(curLoc.row, curLoc.col + 1, DIRS.EAST);
-                });
-                $('#btnWest').click(function() {
-                    movePlayer(curLoc.row, curLoc.col - 1, DIRS.WEST);
-                });
+                    $('#btnNorth').click(function() {
+                        movePlayer(curLoc.row - 1, curLoc.col, DIRS.NORTH);
+                    });
+                    $('#btnSouth').click(function() {
+                        movePlayer(curLoc.row + 1, curLoc.col, DIRS.SOUTH);
+                    });
+                    $('#btnEast').click(function() {
+                        movePlayer(curLoc.row, curLoc.col + 1, DIRS.EAST);
+                    });
+                    $('#btnWest').click(function() {
+                        movePlayer(curLoc.row, curLoc.col - 1, DIRS.WEST);
+                    });
 
-                loadMazeSelect();
-                loadTeamSelect();
-                // loadGameSelect();
-                loadBotSelect();
+                    loadMazeSelect();
+                    loadTeamSelect();
+                    // loadGameSelect();
+                    loadBotSelect();
+                });
             </script>
         </footer>
     </body>
