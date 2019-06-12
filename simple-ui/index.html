@@ -29,9 +29,6 @@
                 Bot
                 <select id="selBot"></select>
             </div>
-            <div id="btnLoadMaze" class="optionsContainer">
-                <button>Load Maze</button>
-            </div>
 
             <!-- <div>
                 <pre id="textRender"></pre>
@@ -60,9 +57,8 @@
 
         <footer>
             <script>
-                $('#btnLoadMaze').click(function() {
+                $('#selMaze').change(function() {
                     loadMaze($('#selMaze option:selected').val());
-                    // startBotGame($('#selTeam option:selected').val(), $('#selBot option:selected').val(), $('#selMaze option:selected').val());
                 });
 
                 $('#selTeam').change(function() {
@@ -84,7 +80,7 @@
 
                 loadMazeSelect();
                 loadTeamSelect();
-                loadGameSelect();
+                // loadGameSelect();
                 loadBotSelect();
             </script>
         </footer>

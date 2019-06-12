@@ -94,6 +94,8 @@ function loadMazeSelect() {
             opt += '</option>';
             $('#selMaze').append(opt);
         }
+
+        loadMaze($('#selMaze option:selected').val());
     });
 }
 
