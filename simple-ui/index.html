@@ -30,18 +30,6 @@
                 <select id="selBot"></select>
             </div>
 
-            <!-- <div>
-                <pre id="textRender"></pre>
-            </div> -->
-            <!-- Game: <select id="selGame"></select><br /> -->
-            <!-- <select id="selCmd">
-                            <option value="Look">Look</option>
-                            <option value="Move">Move</option>
-                            <option value="Move">Jump</option>
-                            <option value="Stand">Stand</option>
-                            <option value="Stand">Write</option>
-                        </select> -->
-
             <div id="controlsContainer">
                 <div style="text-align: center">
                     Movement
@@ -69,21 +57,27 @@
                     $('#btnNorth').click(function() {
                         movePlayer(curLoc.row - 1, curLoc.col, DIRS.NORTH);
                     });
+
                     $('#btnSouth').click(function() {
                         movePlayer(curLoc.row + 1, curLoc.col, DIRS.SOUTH);
                     });
+
                     $('#btnEast').click(function() {
                         movePlayer(curLoc.row, curLoc.col + 1, DIRS.EAST);
                     });
+
                     $('#btnWest').click(function() {
                         movePlayer(curLoc.row, curLoc.col - 1, DIRS.WEST);
                     });
 
-                    loadMazeSelect();
-                    loadTeamSelect();
-                    // loadGameSelect();
-                    loadBotSelect();
+                    setTimeout(doLoad, 500);
                 });
+
+                function doLoad() {
+                    loadTeamSelect();
+                    loadBotSelect();
+                    loadMazeSelect();
+                }
             </script>
         </footer>
     </body>
