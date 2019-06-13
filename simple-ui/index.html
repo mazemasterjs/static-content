@@ -47,6 +47,10 @@
         <footer>
             <script>
                 $(document).ready(function() {
+                    loadTeamSelect();
+                    loadBotSelect();
+                    loadMazeSelect();
+
                     $('#selMaze').change(function() {
                         loadMaze($('#selMaze option:selected').val());
                     });
@@ -70,15 +74,7 @@
                     $('#btnWest').click(function() {
                         movePlayer(curLoc.row, curLoc.col - 1, DIRS.WEST);
                     });
-
-                    setTimeout(doLoad, 500);
                 });
-
-                function doLoad() {
-                    loadTeamSelect();
-                    loadBotSelect();
-                    loadMazeSelect();
-                }
             </script>
         </footer>
     </body>
