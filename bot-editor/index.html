@@ -47,9 +47,12 @@
         <script src="js/monaco-editor/min/vs/editor/editor.main.js"></script>
 
         <script>
+            const startingScript =
+                "queueAction('FORCED_JD_EDITOR_002', 'stand', 'none');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'west');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'north');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'north');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'west');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nlogBotMsg('I WIN! WOOHOO!');\n";
+
             // themes: vs | vs-dark | hc-black
             const editor = monaco.editor.create(document.getElementById('editor'), {
-                value: "queueAction('FORCED_JD_EDITOR_002', 'look', 'north', 'Test Message');",
+                value: startingScript,
                 language: 'javascript',
                 lineNumbers: 'on',
                 roundedSelection: false,
