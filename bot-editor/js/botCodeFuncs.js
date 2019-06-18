@@ -1,4 +1,3 @@
-//const GAME_URL = 'http://localhost:8080/game';
 const GAME_URL = 'http://mazemasterjs.com/game';
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';

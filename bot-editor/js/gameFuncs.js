@@ -1,4 +1,3 @@
-//const GAME_URL = 'http://localhost:8080/game';
 const GAME_URL = 'http://mazemasterjs.com/game';
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
@@ -8,9 +7,6 @@ let actionQueue = [];
 let totalMoves = 0;
 let totalScore = 1000;
 
-// const loadMazes = new Promise(function(resolve, reject) {
-
-// })
 function loadMazes() {
     console.log('Loading maze list...');
     return $.getJSON(MAZE_URL + '/get', (mazes) => {
