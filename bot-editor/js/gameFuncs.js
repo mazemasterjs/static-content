@@ -10,6 +10,7 @@ let totalScore = 1000;
 function loadMazes() {
     console.log('Loading maze list...');
     return $.getJSON(MAZE_URL + '/get', (mazes) => {
+        $('#selMaze').empty();
         for (const maze of mazes) {
             let opt = "<option value='" + maze.id + "'>";
             opt += maze.name + ' (' + maze.height + ' x ' + maze.width + ')';
@@ -30,6 +31,7 @@ function loadTeams() {
     console.log('Loading teams list...');
     return $.getJSON(TEAM_URL + '/get', (data) => {
         teams = data;
+        $('#selTeam').empty();
         for (const team of teams) {
             let opt = "<option value='" + team.id + "'>";
             opt += team.name;
@@ -77,7 +79,6 @@ async function loadControls() {
             });
         });
     });
-    loadTeams();
 }
 
 function logBotMsg(message) {
