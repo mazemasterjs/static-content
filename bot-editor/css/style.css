@@ -1,0 +1,133 @@
+body {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 12px;
+    background-color: rgb(0, 0, 0);
+    color: antiquewhite;
+    margin: 1rem;
+}
+
+hr {
+    border: solid 1px gray;
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: normal;
+}
+
+#textLog {
+    width: 100%;
+    overflow-y: auto;
+}
+
+.scroller::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+    background-color: black;
+}
+
+.scroller::-webkit-scrollbar {
+    width: 0.25rem;
+    background-color: black;
+}
+
+.scroller::-webkit-scrollbar-thumb {
+    border-radius: 0.25rem;
+    background-color: slategray;
+    border: 1px solid gray;
+}
+
+#textLog > p {
+    display: flex;
+    align-content: center;
+    overflow-wrap: break-word;
+}
+
+.msgHdr {
+    padding: 0.1rem 0rem 0.1rem 0rem;
+    margin-top: 0rem 0rem 0.2rem 0rem;
+    font-size: 0.95rem;
+    justify-content: center;
+    color: antiquewhite;
+    border-top: solid 1px burlywood;
+    border-bottom: solid 1px burlywood;
+    background-color: rgba(150, 135, 115, 0.25);
+}
+
+.msgBdy {
+    margin: 0rem;
+    padding: 0rem 0rem 0rem 0.5rem;
+    font-size: 0.85rem;
+    font-size: 0.85rem;
+    color: antiquewhite;
+}
+
+.botMsgHdr {
+    padding: 0.1rem 0rem 0.1rem 0rem;
+    margin-top: 0rem 0rem 0.2rem 0rem;
+    font-size: 0.95rem;
+    justify-content: center;
+    color: lightskyblue;
+    border-top: solid 1px lightblue;
+    border-bottom: solid 1px lightblue;
+    background-color: rgba(0, 0, 139, 0.25);
+}
+
+.botMsgBdy {
+    margin: 0rem;
+    padding: 0rem 0rem 0rem 0.5rem;
+    font-size: 0.85rem;
+    font-size: 0.85rem;
+    color: lightskyblue;
+}
+
+.errHdr {
+    margin-top: 0rem 0rem 0.2rem 0rem;
+    font-size: 0.95rem;
+    justify-content: center;
+    color: red;
+    border-top: solid 1px darkred;
+    border-bottom: solid 1px #8b0000;
+    background-color: rgba(100, 0, 0, 0.4);
+}
+.errBdy {
+    margin: 0rem;
+    padding: 0rem 0rem 0rem 0.5rem;
+    font-size: 0.85rem;
+    align-content: center;
+    font-size: 0.85rem;
+    color: red;
+}
+
+.selections {
+    margin: 0.5rem;
+}
+
+.controls {
+    margin: 0.5rem;
+}
+
+.controls > button {
+    margin-right: 0.5rem;
+}
+
+.controls > select {
+    margin-right: 0.5rem;
+}
+
+#editor {
+    overflow: hidden;
+}
+
+#work-grid {
+    display: grid;
+    margin: none;
+    grid-column-gap: 0.5rem;
+    grid-template-columns: 60vw 2fr 1fr;
+    grid-template-rows: 75vh;
+}
+
+.grid-item {
+    display: flex;
+    border: solid 1px gray;
+}

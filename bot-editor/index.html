@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css?family=Quicksand&display=swap" rel="stylesheet" />
+        <link href="css/style.css" rel="stylesheet" type="text/css" />
+        <link rel="stylesheet" data-name="vs/editor/editor.main" href="js/monaco-editor/min/vs/editor/editor.main.css" />
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <script src="js/enums.js"></script>
+        <script src="js/gameFuncs.js"></script>
+    </head>
+    <body>
+        <h2>MazeMasterJS - Bot Editor</h2>
+        <div class="controls">
+            <button id="btnStartBot" onclick="startBot();">Run Bot</button>
+            <button id="btnUpdateBotCode" onclick="updateBotCode();">Save Bot</button>
+            <button id="btnSaveBotCode" onclick="saveNewBotCode();">Version Bot</button>
+        </div>
+
+        <div id="work-grid">
+            <div id="editor" class="grid-item"></div>
+            <div id="output" class="grid-item">
+                <div id="textLog" class="scroller"></div>
+            </div>
+            <div id="actions" class="grid-item">
+                <div id="actionLog" class="scroller"></div>
+            </div>
+        </div>
+
+        <div class="selections">
+            Maze
+            <select id="selMaze"></select>
+            Team
+            <select id="selTeam"></select>
+            Bot
+            <select id="selBot"></select>
+            <button id="startGame" onclick="startGame()">Start Game</button>
+        </div>
+
+        <script>
+            var require = {paths: {vs: 'js/monaco-editor/min/vs'}};
+        </script>
+        <script src="js/monaco-editor/min/vs/loader.js"></script>
+        <script src="js/monaco-editor/min/vs/editor/editor.main.nls.js"></script>
+        <script src="js/monaco-editor/min/vs/editor/editor.main.js"></script>
+
+        <script>
+            // themes: vs | vs-dark | hc-black
+            const editor = monaco.editor.create(document.getElementById('editor'), {
+                value: "queueAction('FORCED_JD_EDITOR_002', 'look', 'north', 'Test Message');",
+                language: 'javascript',
+                lineNumbers: 'on',
+                roundedSelection: false,
+                scrollBeyondLastLine: false,
+                readOnly: false,
+                theme: 'vs-dark',
+                automaticLayout: true
+            });
+
+            $('#selTeam').change(() => {
+                loadBots($('#selTeam :selected').val());
+            });
+
+            var myBinding = editor.addCommand(monaco.KeyCode.F5, function() {
+                alert('F5 pressed!');
+            });
+
+            function startBot() {
+                console.log('Starting bot...');
+                const bot = editor.getValue();
+                eval(bot);
+                processActionQueue();
+            }
+
+            function stopBot() {
+                console.log('Stopping Bot #...');
+            }
+
+            loadControls();
+        </script>
+    </body>
+</html>

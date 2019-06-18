@@ -4,8 +4,8 @@
     --wallWidth: 1px;
     --edgeWidth: 1px;
     --exitWidth: 1px;
-    --mazeViewSize: 50vw;
-    --maxMazeViewHeight: 90vh;
+    --mazeViewSize: 50rem;
+    --maxMazeViewHeight: 30rem;
     --cellIconFontSize: 1em;
     --wallColor: rgb(173, 173, 173);
     --exitColor: rgba(124, 124, 124, 0.3);
@@ -19,7 +19,7 @@ body {
 }
 
 .grid-container {
-    min-width: 285px;
+    min-width: var(--maxMazeViewHeight);
     max-height: var(--maxMazeViewHeight);
     width: var(--mazeViewSize);
     height: var(--mazeViewSize);
