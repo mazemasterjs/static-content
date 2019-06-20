@@ -2,14 +2,29 @@ const GAME_URL = 'http://mazemasterjs.com/game';
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
 
-function startGame() {
-    prepend('Starting game...');
+function loadBotCode(botId, version) {
+    console.log('Loading bot code - botId=' + botId + ', version=' + version);
+    const url = CODE_URL + '/get/botCode?botId=' + botId;
 
-    const mazeId = $('#selMaze').val();
-    const teamId = $('#selTeam').val();
-    const botId = $('#selBot :selected').val();
-    const url = GAME_URL + '/new/' + mazeId + '/' + teamId + '/' + botId + '?forceId=FORCED_JD_EDITOR_002';
+    return $.getJSON(CODE_URL, (codeDocs) => {
+        $('#selBotVersion').empty();
+        for (const codeDoc of codeDocs) {
+            let opt = "<option value='" + codeDoc.version + "'>";
+            opt += codeDoc.version;
+            opt += '</option>';
+            $('#selBotVersion').append(opt);
+        }
+    })
+        .done(() => {
+            return Promise.resolve();
+        })
+        .fail((err) => {
+            logError('ERROR LOADING BOT VERSIONS', err.status + ' - ' + err.statusText);
+            return Promise.reject(err);
+        });
+}
 
+function saveBotCode() {
     $.ajax({
         url: url,
         method: 'PUT', // method is any HTTP method

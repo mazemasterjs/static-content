@@ -12,14 +12,16 @@
         <link rel="stylesheet" data-name="vs/editor/editor.main" href="js/monaco-editor/min/vs/editor/editor.main.css" />
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
         <script src="js/enums.js"></script>
-        <script src="js/gameFuncs.1.js"></script>
+        <script src="js/gameFuncs.js"></script>
     </head>
     <body>
         <h2>MazeMasterJS - Bot Editor</h2>
         <div class="controls">
-            <button id="btnStartBot" onclick="startBot();">Run Bot</button>
+            Bot Version:
+            <select id="selBotVersion" onchange="loadBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val());"></select>
             <button id="btnUpdateBotCode" onclick="updateBotCode();">Save Bot</button>
-            <button id="btnSaveBotCode" onclick="saveNewBotCode();">Version Bot</button>
+            <button id="btnSaveBotCode" onclick="versionBotCode($('#selBot :selected').val(),editor.getValue());">Version Bot</button>
+            <button id="btnStartBot" onclick="startBot();">Run Bot</button>
         </div>
 
         <div id="work-grid">
@@ -33,12 +35,12 @@
         </div>
 
         <div class="selections">
-            Maze
+            Maze:
             <select id="selMaze"></select>
-            Team
+            Team:
             <select id="selTeam"></select>
-            Bot
-            <select id="selBot"></select>
+            Bot:
+            <select id="selBot" onchange="loadBotVersions($('#selBot :selected').val())"></select>
             <button id="startGame" onclick="startGame()">Start Game</button>
         </div>
 
@@ -50,8 +52,7 @@
         <script src="js/monaco-editor/min/vs/editor/editor.main.js"></script>
 
         <script>
-            const startingScript =
-                "queueAction('FORCED_JD_EDITOR_002', 'stand', 'none');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'west');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'north');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'north');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'west');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nqueueAction('FORCED_JD_EDITOR_002', 'move', 'south');\nlogBotMsg('I WIN! WOOHOO!');\n";
+            const startingScript = "logMessage('bot', 'I am<b>&nbsp;alive!</b>', 'Shall we play a<b>&nbsp;game?</b>');";
 
             // themes: vs | vs-dark | hc-black
             const editor = monaco.editor.create(document.getElementById('editor'), {
@@ -66,11 +67,17 @@
             });
 
             $('#selTeam').change(() => {
+                console.log('team changed');
                 loadBots($('#selTeam :selected').val());
             });
 
+            $('#selBot').change(() => {
+                console.log('bot changed');
+                loadBotCode($('#selBot :selected').val());
+            });
+
             var myBinding = editor.addCommand(monaco.KeyCode.F5, function() {
-                alert('F5 pressed!');
+                startBot();
             });
 
             function startBot() {
@@ -84,7 +91,13 @@
                 console.log('Stopping Bot #...');
             }
 
-            loadControls();
+            $().ready(async () => {
+                console.log('Document ready, loading control data.');
+
+                await loadControls().catch((err) => {
+                    console.log('load controls error: ' + err.message);
+                });
+            });
         </script>
     </body>
 </html>

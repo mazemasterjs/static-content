@@ -1,6 +1,6 @@
 body {
     font-family: 'Quicksand', sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     background-color: rgb(0, 0, 0);
     color: antiquewhite;
     margin: 1rem;
@@ -43,7 +43,7 @@ h2 {
     overflow-wrap: break-word;
 }
 
-.msgHdr {
+.logMsgHdr {
     padding: 0.1rem 0rem 0.1rem 0rem;
     margin-top: 0rem 0rem 0.2rem 0rem;
     font-size: 0.95rem;
@@ -51,15 +51,19 @@ h2 {
     color: antiquewhite;
     border-top: solid 1px burlywood;
     border-bottom: solid 1px burlywood;
-    background-color: rgba(150, 135, 115, 0.25);
+    background-color: rgba(150, 135, 115, 0.2);
 }
 
-.msgBdy {
+.logMsgBdy {
     margin: 0rem;
     padding: 0rem 0rem 0rem 0.5rem;
     font-size: 0.85rem;
     font-size: 0.85rem;
     color: antiquewhite;
+}
+
+.logMsgEmp {
+    font-weight: bold;
 }
 
 .botMsgHdr {
@@ -70,7 +74,7 @@ h2 {
     color: lightskyblue;
     border-top: solid 1px lightblue;
     border-bottom: solid 1px lightblue;
-    background-color: rgba(0, 0, 139, 0.25);
+    background-color: rgba(0, 0, 139, 0.4);
 }
 
 .botMsgBdy {
@@ -81,22 +85,60 @@ h2 {
     color: lightskyblue;
 }
 
-.errHdr {
+.botMsgEmp {
+    color: white;
+    font-weight: bold;
+}
+
+.botMsgEmp {
+    color: rgb(128, 128, 255);
+    font-weight: bold;
+}
+
+.wrnMsgHdr {
+    margin-top: 0rem 0rem 0.2rem 0rem;
+    font-size: 0.95rem;
+    justify-content: center;
+    color: darkorange;
+    border-top: solid 1px orange;
+    border-bottom: solid 1px orange;
+    background-color: rgba(255, 140, 0, 0.12);
+}
+.wrnMsgBdy {
+    margin: 0rem;
+    padding: 0rem 0rem 0rem 0.5rem;
+    font-size: 0.85rem;
+    align-content: center;
+    font-size: 0.85rem;
+    color: darkorange;
+}
+
+.wrnMsgEmp {
+    color: gold;
+    font-weight: bold;
+}
+
+.errMsgHdr {
     margin-top: 0rem 0rem 0.2rem 0rem;
     font-size: 0.95rem;
     justify-content: center;
     color: red;
-    border-top: solid 1px darkred;
-    border-bottom: solid 1px #8b0000;
-    background-color: rgba(100, 0, 0, 0.4);
+    border-top: solid 1px red;
+    border-bottom: solid 1px red;
+    background-color: rgba(139, 0, 0, 0.3);
 }
-.errBdy {
+.errMsgBdy {
     margin: 0rem;
     padding: 0rem 0rem 0rem 0.5rem;
     font-size: 0.85rem;
     align-content: center;
     font-size: 0.85rem;
     color: red;
+}
+
+.errMsgEmp {
+    color: red;
+    font-weight: bold;
 }
 
 .selections {

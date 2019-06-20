@@ -41,7 +41,6 @@ const PLAYER_STATES = {
     DEAD: 512
 };
 const DIRS = {
-    NONE: 0,
     NORTH: 1,
     SOUTH: 2,
     EAST: 4,
