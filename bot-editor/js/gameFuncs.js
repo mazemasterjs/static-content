@@ -1,7 +1,7 @@
-const GAME_URL = 'http://localhost:8080/game';
+const GAME_URL = 'http://mazemasterjs.com/game';
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
-//const TEAM_URL = 'http://mazemasterjs.com/api/team';
-const TEAM_URL = 'http://localhost:8083/api/team';
+const TEAM_URL = 'http://mazemasterjs.com/api/team';
+//const TEAM_URL = 'http://localhost:8083/api/team';
 
 let curGame;
 let actionQueue = [];
@@ -412,6 +412,8 @@ async function processActionQueue() {
                 for (let pos = 0; pos < data.outcomes.length - 2; pos++) {
                     logMsg += pos + 1 + ': ' + data.outcomes[pos] + '<br />';
                 }
+
+                logMsg += 'ENGRAM:<br />' + JSON.stringify(data.engram);
 
                 // track total move count and score
                 totalMoves += data.moveCount;
