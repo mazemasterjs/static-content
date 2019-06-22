@@ -6,44 +6,67 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta http-equiv="Pragma" content="no-cache" />
         <meta http-equiv="Expires" content="0" />
+
+        <!-- Fonts  / Icons-->
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css?family=Quicksand&display=swap" rel="stylesheet" />
-        <link href="css/style.css" rel="stylesheet" type="text/css" />
+
+        <!-- Monaco -->
         <link rel="stylesheet" data-name="vs/editor/editor.main" href="js/monaco-editor/min/vs/editor/editor.main.css" />
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+        <!-- jQuery -->
+        <script src="js/jquery-3.4.1.min.js"></script>
+
+        <!-- jQuery UI -->
+        <link rel="stylesheet" href="js/jquery-ui-1.12.1/jquery-ui.min.css" />
+        <!-- <script src="external/jquery/jquery.js"></script> -->
+        <script src="js/jquery-ui-1.12.1/jquery-ui.min.js"></script>
+
+        <!-- MazeMaster Stuff -->
+        <link href="css/style.css" rel="stylesheet" type="text/css" />
         <script src="js/enums.js"></script>
         <script src="js/gameFuncs.js"></script>
     </head>
     <body>
-        <h2>MazeMasterJS - Bot Editor</h2>
-        <div class="controls">
-            Bot Version:
-            <select id="selBotVersion" onchange="loadBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val());"></select>
-            <button id="btnUpdateBotCode" onclick="updateBotCode();">Save Bot</button>
-            <button id="btnSaveBotCode" onclick="versionBotCode($('#selBot :selected').val(),editor.getValue());">Version Bot</button>
-            <button id="btnStartBot" onclick="startBot();">Run Bot</button>
-        </div>
+        <header id="pageTitle">
+            <h2>MazeMasterJS - Bot Editor</h2>
+        </header>
 
-        <div id="work-grid">
-            <div id="editor" class="grid-item"></div>
-            <div id="output" class="grid-item">
-                <div id="textLog" class="scroller"></div>
+        <section id="appContainer">
+            <div class="controls">
+                Bot Version:
+                <select id="selBotVersion" onchange="loadBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val());"></select>
+                <button id="btnUpdateBotCode" onclick="updateBotCode();">Save Bot</button>
+                <button id="btnSaveBotCode" onclick="versionBotCode($('#selBot :selected').val(),editor.getValue());">Version Bot</button>
+                <button id="btnStartBot" onclick="startBot();">Run Bot</button>
             </div>
-            <div id="actions" class="grid-item">
-                <div id="actionLog" class="scroller"></div>
+
+            <div id="work-grid">
+                <div id="editor" class="grid-item"></div>
+                <div id="output" class="grid-item">
+                    <div id="textLog" class="scroller"></div>
+                </div>
+            </div>
+
+            <div class="selections">
+                Maze:
+                <select id="selMaze"></select>
+                Team:
+                <select id="selTeam"></select>
+                Bot:
+                <select id="selBot" onchange="loadBotVersions($('#selBot :selected').val())"></select>
+                <button id="startGame" onclick="startGame()">Start Game</button>
+            </div>
+        </section>
+
+        <div id="miniMap" class="ui-widget-content">
+            <div>
+                <h3 class="ui-widget-header">MINI MAP</h3>
+                <div id="miniMapContent" onresize="scaleMiniMap();"></div>
             </div>
         </div>
 
-        <div class="selections">
-            Maze:
-            <select id="selMaze"></select>
-            Team:
-            <select id="selTeam"></select>
-            Bot:
-            <select id="selBot" onchange="loadBotVersions($('#selBot :selected').val())"></select>
-            <button id="startGame" onclick="startGame()">Start Game</button>
-        </div>
-
+        <!-- Load the Monaco Editor -->
         <script>
             var require = {paths: {vs: 'js/monaco-editor/min/vs'}};
         </script>
@@ -52,6 +75,7 @@
         <script src="js/monaco-editor/min/vs/editor/editor.main.js"></script>
 
         <script>
+            /* CONFIGURE MONACO */
             const startingScript = "logMessage('bot', 'I am<b>&nbsp;alive!</b>', 'Shall we play a<b>&nbsp;game?</b>');";
 
             // themes: vs | vs-dark | hc-black
@@ -66,33 +90,65 @@
                 automaticLayout: true
             });
 
-            $('#selTeam').change(() => {
-                console.log('team changed');
-                loadBots($('#selTeam :selected').val());
-            });
-
-            $('#selBot').change(() => {
-                console.log('bot changed');
-                loadBotCode($('#selBot :selected').val());
-            });
-
+            // F5 within the code editor will run the bot
             var myBinding = editor.addCommand(monaco.KeyCode.F5, function() {
                 startBot();
             });
 
-            function startBot() {
-                console.log('Starting bot...');
-                const bot = editor.getValue();
-                eval(bot);
-                processActionQueue();
-            }
-
-            function stopBot() {
-                console.log('Stopping Bot #...');
-            }
-
+            // on page read, bind control events and start loading data
             $().ready(async () => {
-                console.log('Document ready, loading control data.');
+                console.log('Document ready, loading...');
+
+                $('#selTeam').change(() => {
+                    console.log('team changed');
+                    loadBots($('#selTeam :selected').val());
+                });
+
+                $('#selBot').change(() => {
+                    console.log('bot changed');
+                    loadBotCode($('#selBot :selected').val());
+                });
+
+                // Initialize jQuery-ui widgets
+                $('#miniMap')
+                    .resizable({
+                        aspectRatio: 1
+                    })
+                    .draggable();
+
+                $('#miniMap').position({
+                    my: 'right bottom',
+                    at: 'right-5 bottom-5',
+                    of: '#textLog',
+                    collision: 'fit'
+                });
+
+                /**
+                 * Dynamically scale the mini map content's font size
+                 */
+                $('#miniMap').on('resize', function(event, ui) {
+                    const pre = $('#miniMapContent > pre');
+
+                    // no content, return
+                    if (pre.length === 0) {
+                        return;
+                    }
+
+                    // determine the number of characters - scale determined based on
+                    // 3x3 maze with text-render of 13 chars per maze column
+                    const rows = pre.text().split('\n').length;
+                    const cols = pre.text().split('\n')[0].length;
+                    const mazeModOffset = parseInt($(':root').css('font-size')) - 13;
+                    const mazeMod = (rows > cols ? rows : cols) + mazeModOffset;
+                    console.log(`row-chars: ${rows}, col-chars: ${cols}, mazeMod: ${mazeMod}`);
+
+                    const mm = $('#miniMapContent');
+                    const mmFontSize = parseInt($(':root').css('--miniMapBaseFontSize'));
+                    const baseSize = parseInt($(':root').css('--miniMapBaseSize'));
+                    const newRemSize = mm.width() / parseInt($(':root').css('font-size'));
+
+                    $(':root').css('--miniMapFontSize', (newRemSize / baseSize) * mmFontSize + 'rem');
+                });
 
                 await loadControls().catch((err) => {
                     console.log('load controls error: ' + err.message);

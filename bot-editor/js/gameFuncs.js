@@ -1,9 +1,11 @@
-const GAME_URL = 'http://mazemasterjs.com/game';
+//const GAME_URL = 'http://mazemasterjs.com/game';
+const GAME_URL = 'http://localhost:8080/game';
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
-//const TEAM_URL = 'http://localhost:8083/api/team';
+// const TEAM_URL = 'http://localhost:8083/api/team';
 
 let curGame;
+let lastAction;
 let actionQueue = [];
 let totalMoves = 0;
 let totalScore = 1000;
@@ -22,7 +24,7 @@ async function loadControls() {
 }
 
 function loadMazes() {
-    console.log('Loading maze list...');
+    console.debug('Loading maze list...');
     return $.getJSON(MAZE_URL + '/get', (mazes) => {
         $('#selMaze').empty();
         for (const maze of mazes) {
@@ -169,7 +171,7 @@ function loadBotCode(botId, version) {
         if (botCode !== undefined) {
             console.log('Bot Loaded: ' + JSON.stringify(botCode));
             $('#selBotVersion').val(botCode.version);
-            logMessage('log', `BOT CODE v ${botCode.version} LOADED!`);
+            logMessage('log', `BOT CODE v${botCode.version} LOADED!`);
             editor.setValue(botCode.code);
         } else {
             logMessage('wrn', 'BOT CODE NOT FOUND');
@@ -187,6 +189,7 @@ function loadBotCode(botId, version) {
  * @param {*} code
  */
 function updateBotCode(botId, version, code) {
+    console.log(`updateBotCode(botId: ${botId}, version: ${version}, code: ${code.substring(0, 100)}`);
     const putUrl = TEAM_URL + '/update/botCode';
 
     $.getJSON(getUrl, (docs) => {})
@@ -364,6 +367,7 @@ function startGame() {
         success: function(data) {
             $('#textLog').empty();
             $('#actionLog').empty();
+            curGame = data;
             logMessage('log', 'Game Created', 'Game.Id :: ' + data.game.gameId);
         },
         error: function(error) {
@@ -400,36 +404,8 @@ async function processActionQueue() {
             dataType: 'json',
             data: action,
             success: function(data) {
-                // report command and direction
-                let logMsg = 'Command: ' + Object.keys(COMMANDS)[data.command] + '<br />';
-                logMsg += 'Direction: ' + Object.keys(DIRS)[data.direction] + '<br />';
-
-                // include message if one was given
-                if (data.message !== '') logMsg += 'Message: ' + data.message + '<br />';
-
-                // add outcomes to the log
-                logMsg += 'OUTCOME:<br />';
-                for (let pos = 0; pos < data.outcomes.length - 2; pos++) {
-                    logMsg += pos + 1 + ': ' + data.outcomes[pos] + '<br />';
-                }
-
-                logMsg += 'ENGRAM:<br />' + JSON.stringify(data.engram);
-
-                // track total move count and score
-                totalMoves += data.moveCount;
-                totalScore += data.score;
-
-                // now dump it all in the log
-                logMessage('log', 'ACTION ' + totalMoves + ', SCORE: ' + totalScore, logMsg);
-
-                // DEBUG STUFF : SHOW MAP AND LIST TROPHIES
-                $('#actionLog').empty();
-                $('#actionLog').append('MAP:<br/><pre style="text-align:center">' + data.outcomes[data.outcomes.length - 1] + '</pre>');
-                $('#actionLog').append('TROPHIES:<br/>');
-                for (const trophy of data.trophies) {
-                    $('#actionLog').append(trophy.id + '<br />');
-                }
-
+                lastAction = data;
+                renderAction(data);
                 return Promise.resolve(data);
             },
             error: function(error) {
@@ -440,4 +416,121 @@ async function processActionQueue() {
     }
 
     logMessage('log', 'ACTION QUEUE EMPTY');
+}
+
+function renderAction(action) {
+    // report command and direction
+    // let logMsg = '<pre>';
+    // logMsg += JSON.stringify(action, null, 2);
+    // logMsg += '</pre>';
+    let logMsg = '<div class="actionBody">';
+
+    logMsg += `Command: ${getObjValName(COMMANDS, action.command)} `;
+    logMsg += `Direction: ${getObjValName(DIRS, action.direction)}`;
+
+    logMsg += `Sight: ${action.engram.sight}`;
+    logMsg += `Sound: ${action.engram.sound}</br>`;
+    logMsg += `Smell: ${action.engram.smell}</br>`;
+    logMsg += `Touch: ${action.engram.touch}</br>`;
+    logMsg += `Taste: ${action.engram.taste}</br>`;
+    logMsg += '</div>';
+
+    // include message if one was given
+    if (action.message !== '') logMsg += 'Message: ' + action.message + '<br />';
+
+    // add outcomes to the log
+    logMsg += 'OUTCOMES:<br />';
+    for (let pos = 0; pos < action.outcomes.length - 2; pos++) {
+        logMsg += pos + 1 + ': ' + action.outcomes[pos] + '<br />';
+    }
+
+    // track total move count and score
+    totalMoves += action.moveCount;
+    totalScore += action.score;
+
+    // now dump it all in the log
+    console.log(logMsg);
+    logMessage('log', `${getCommandIcon(action.command)} ${getDirectionIcon(action.direction)} MOVE #${totalMoves},  SCORE: ${totalScore}`, logMsg);
+
+    // DEBUG STUFF : SHOW MAP AND LIST TROPHIES
+    $('#miniMapContent').empty();
+    $('#miniMapContent').append(`<pre>${action.outcomes[action.outcomes.length - 1]}</pre>`);
+}
+
+function getCommandIcon(command) {
+    switch (command) {
+        case COMMANDS.NONE:
+            return '<span class="ui-icon ui-icon-cancel"></span>';
+        case COMMANDS.FACE:
+            return '<span class="ui-icon ui-icon-refresh"></span>';
+        case COMMANDS.LISTEN:
+            return '<span class="ui-icon ui-icon-volume-on"></span>';
+        case COMMANDS.LOOK:
+            return '<span class="ui-icon ui-icon-search"></span>';
+        case COMMANDS.SIT:
+            return '<span class="ui-icon ui-icon-arrowstop-1-s"></span>';
+        case COMMANDS.SNIFF:
+            return '<span class="ui-icon ui-icon-caret-2-e-w"></span>';
+        case COMMANDS.STAND:
+            return '<span class="ui-icon ui-icon-arrowstop-1-n"></span>';
+        case COMMANDS.TURN:
+            return '<span class="ui-icon ui-icon-refresh"></span>';
+        case COMMANDS.MOVE:
+            return '<span class="ui-icon ui-icon-transfer-e-w"></span>';
+        case COMMANDS.JUMP:
+            return '<span class="ui-icon ui-icon-eject"></span>';
+        case COMMANDS.WAIT:
+            return '<span class="ui-icon ui-icon-clock"></span>';
+        case COMMANDS.WRITE:
+            return '<span class="ui-icon ui-icon-pencil"></span>';
+        case COMMANDS.QUIT:
+            return '<span class="ui-icon ui-icon-power"></span>';
+    }
+    return '';
+}
+
+function getDirectionIcon(direction) {
+    switch (direction) {
+        case DIRS.NONE:
+            return '<span class="ui-icon ui-icon-arrow-4-diag"></span>';
+        case DIRS.NORTH:
+            return '<span class="ui-icon ui-icon-triangle-1-n"></span>';
+        case DIRS.SOUTH:
+            return '<span class="ui-icon ui-icon-triangle-1-s"></span>';
+        case DIRS.EAST:
+            return '<span class="ui-icon ui-icon-triangle-1-e"></span>';
+        case DIRS.WEST:
+            return '<span class="ui-icon ui-icon-triangle-1-w"></span>';
+        case DIRS.LEFT:
+            return '<span class="ui-icon ui-icon-arrowrefresh-1-w"></span>';
+        case DIRS.RIGHT:
+            return '<span class="ui-icon ui-icon-arrowrefresh-1-e"></span>';
+    }
+    return '';
+}
+
+/**
+ * Start the bot...
+ */
+function startBot() {
+    console.log('Starting bot...');
+    const bot = editor.getValue();
+    eval(bot);
+    processActionQueue();
+}
+
+/**
+ * Stop the bot..
+ */
+function stopBot() {
+    console.log('Stopping Bot #...');
+}
+
+// returns the value
+function getObjValName(obj, val) {
+    for (const item in obj) {
+        if (obj[item] === val) {
+            return item;
+        }
+    }
 }
