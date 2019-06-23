@@ -1,15 +1,69 @@
 :root {
-    font-size: 16px;
-    --miniMapBaseFontSize: 1rem;
     --miniMapFontSize: 1rem;
     --miniMapBaseSize: 10rem;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 16px;
+}
+/* The outer container for the tooltip. */
+.ui-tooltip {
+    border: solid 1px antiquewhite !important;
+    border-radius: 12px !important;
+    background: none;
+    background-color: #202020;
+    color: antiquewhite;
+}
+
+select {
+    background: #202020 url(../js/jquery-ui-1.12.1/images/ui-bg_white-lines_5_202020_40x100.png) 50% 50% repeat;
+    color: antiquewhite;
+    border: solid 1px #deb887b4;
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    min-width: 10rem;
+    text-align: right;
+}
+
+select > option:hover {
+    border-color: #ffd700b3;
+    box-shadow: 0 0 1px 1x rgba(0, 0, 0, 0.5);
+    outline: none;
+}
+
+select option:checked {
+    color: gold !important;
+}
+
+/*
+select option {
+    border: solid 1px red;
+    outline-color: green;
+} */
+
+button {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 0.9rem;
+    border: 1px solid #a38762;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+    text-shadow: -1px -1px 1px 1px rgba(0, 0, 0, 0.5);
+    color: antiquewhite;
+    background-color: #96877333;
+    background-image: linear-gradient(to bottom, #a38762, #3b362e33);
+}
+
+button:hover {
+    border: 1px solid #a17b10;
+    background-color: #96877333;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+    background-image: linear-gradient(to bottom, #3b362e33, #a38762);
 }
 
 body {
-    font-family: 'Quicksand', sans-serif;
     background-color: rgb(0, 0, 0);
     color: antiquewhite;
     margin: 1rem;
+    padding: 0;
 }
 
 hr {
@@ -26,9 +80,13 @@ h2 {
     overflow-y: auto;
 }
 
+#textLog h3 {
+    font-weight: normal;
+}
+
 #miniMap {
     position: absolute;
-    z-index: 1000;
+    z-index: 5000;
     min-height: var(--miniMapBaseSize);
     min-width: var(--miniMapBaseSize);
     height: var(--miniMapSize);
@@ -62,6 +120,10 @@ h2 {
     margin: 0;
 }
 
+.ui-resizable-helper {
+    border: 1px dotted rgba(250, 235, 215, 0.637);
+}
+
 #miniMap:hover {
     opacity: 1;
 }
@@ -69,7 +131,7 @@ h2 {
 .autoScroll::-webkit-scrollbar-track {
     -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
     box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
-    background-color: black;
+    background-color: #454545;
 }
 
 .autoScroll::-webkit-scrollbar {
@@ -79,8 +141,8 @@ h2 {
 
 .autoScroll::-webkit-scrollbar-thumb {
     border-radius: 0.25rem;
-    background-color: slategray;
-    border: 1px solid gray;
+    background-color: rgb(144, 130, 112);
+    border: 1px solid #241700;
 }
 
 #textLog p {
@@ -89,46 +151,48 @@ h2 {
     overflow-wrap: break-word;
 }
 
-.logMsgHdr {
+.logHdr {
+    display: flex;
     padding: 0.1rem 0rem 0.1rem 0rem;
     margin-top: 0rem 0rem 0.2rem 0rem;
     font-size: 0.95rem;
     align-content: center;
     justify-content: center;
-    color: antiquewhite;
-    border-top: solid 1px burlywood;
-    border-bottom: solid 1px burlywood;
-    background-color: rgba(150, 135, 115, 0.2);
+    border-radius: 0;
 }
 
-.logMsgHdr span {
-    display: block;
-    margin-top: auto;
+.logHdr .ui-icon {
+    float: right;
+    margin: auto 0 0 0.5rem;
+    border: solid 1px #deb8878a;
+    border-radius: 0.25rem;
+    transform: scale(1.15);
 }
-.logMsgBdy {
+
+.logBdy {
     margin: 0rem;
     padding: 0rem 0rem 0rem 0.5rem;
     font-size: 0.85rem;
     font-size: 0.85rem;
-    color: antiquewhite;
 }
 
-.logMsgEmp {
-    font-weight: bold;
+.logMsgHdr {
+    color: #faebd7;
+    border-top: solid 1px #deb887;
+    border-bottom: solid 1px #deb887;
+    background-color: rgba(150, 135, 115, 0.2);
+}
+
+.logMsgBdy {
+    color: antiquewhite;
 }
 
 .actionBody {
     font-size: 0.75rem;
-}
-.actionBody p {
-    border: solid 1px red;
+    overflow-wrap: break-word;
 }
 
 .botMsgHdr {
-    padding: 0.1rem 0rem 0.1rem 0rem;
-    margin-top: 0rem 0rem 0.2rem 0rem;
-    font-size: 0.95rem;
-    justify-content: center;
     color: lightskyblue;
     border-top: solid 1px lightblue;
     border-bottom: solid 1px lightblue;
@@ -136,67 +200,27 @@ h2 {
 }
 
 .botMsgBdy {
-    margin: 0rem;
-    padding: 0rem 0rem 0rem 0.5rem;
-    font-size: 0.85rem;
-    font-size: 0.85rem;
     color: lightskyblue;
 }
 
-.botMsgEmp {
-    color: white;
-    font-weight: bold;
-}
-
-.botMsgEmp {
-    color: rgb(128, 128, 255);
-    font-weight: bold;
-}
-
 .wrnMsgHdr {
-    margin-top: 0rem 0rem 0.2rem 0rem;
-    font-size: 0.95rem;
-    justify-content: center;
     color: darkorange;
     border-top: solid 1px orange;
     border-bottom: solid 1px orange;
     background-color: rgba(255, 140, 0, 0.12);
 }
 .wrnMsgBdy {
-    margin: 0rem;
-    padding: 0rem 0rem 0rem 0.5rem;
-    font-size: 0.85rem;
-    align-content: center;
-    font-size: 0.85rem;
     color: darkorange;
 }
 
-.wrnMsgEmp {
-    color: gold;
-    font-weight: bold;
-}
-
 .errMsgHdr {
-    margin-top: 0rem 0rem 0.2rem 0rem;
-    font-size: 0.95rem;
-    justify-content: center;
     color: red;
     border-top: solid 1px red;
     border-bottom: solid 1px red;
     background-color: rgba(139, 0, 0, 0.3);
 }
 .errMsgBdy {
-    margin: 0rem;
-    padding: 0rem 0rem 0rem 0.5rem;
-    font-size: 0.85rem;
-    align-content: center;
-    font-size: 0.85rem;
     color: red;
-}
-
-.errMsgEmp {
-    color: red;
-    font-weight: bold;
 }
 
 .selections {

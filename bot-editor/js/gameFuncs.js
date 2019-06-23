@@ -4,8 +4,9 @@ const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
 // const TEAM_URL = 'http://localhost:8083/api/team';
 
-let curGame;
-let lastAction;
+// Game tracking variables
+let curGame = {};
+let lastAction = {};
 let actionQueue = [];
 let totalMoves = 0;
 let totalScore = 1000;
@@ -17,7 +18,7 @@ async function loadControls() {
     return loadMazes().then(() => {
         return loadTeams().then(() => {
             return loadBots($('#selTeam :selected').val()).then(() => {
-                logMessage('log', 'READY TO&nbsp;<b>ROCK!</b>');
+                logMessage('log', 'READY TO&nbsp;<b>ROCK!</b>', 'The bot editor is ready.');
             });
         });
     });
@@ -171,7 +172,13 @@ function loadBotCode(botId, version) {
         if (botCode !== undefined) {
             console.log('Bot Loaded: ' + JSON.stringify(botCode));
             $('#selBotVersion').val(botCode.version);
-            logMessage('log', `BOT CODE v${botCode.version} LOADED!`);
+            let date = new Date(botCode.lastUpdated);
+
+            logMessage(
+                'log',
+                `BOT CODE v${botCode.version} LOADED!`,
+                `v${botCode.version} was saved on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}.`
+            );
             editor.setValue(botCode.code);
         } else {
             logMessage('wrn', 'BOT CODE NOT FOUND');
@@ -327,9 +334,8 @@ function versionBotCode(botId, code) {
  */
 function logMessage(source, header, message) {
     const textLog = $('#textLog');
-    const hdr = `${source}MsgHdr`;
-    const bdy = `${source}MsgBdy`;
-    const emp = `${source}MsgEmp`;
+    const hdr = `logHdr ${source}MsgHdr`;
+    const bdy = `logBdy ${source}MsgBdy autoScroll`;
 
     if (source === 'bot') {
         'MouseBot Says: '.concat(header);
@@ -339,16 +345,19 @@ function logMessage(source, header, message) {
     //    header = header.toUpperCase();
 
     // build the html content
-    let htmlOut = `<p class="${hdr}">${header}</p>`;
+    let htmlOut = `<h3 class="${hdr}">${header}</h3>`;
 
     if (message !== undefined) {
-        htmlOut += `<p class="${bdy}">${message}</p>`;
+        htmlOut += `<div class="${bdy}">${message}</div>`;
+    } else {
+        htmlOut += `<div class="${bdy}"></div>`;
     }
 
-    // added it to the log
+    // added it to the log and update display
     textLog.append(htmlOut);
+    // textLog.accordion('refresh');
+    // $(`#${textLog.children()[textLog.children().length - 1].id}`).click();
 
-    // and scroll to the bottom
     textLog.scrollTop(textLog[0].scrollHeight);
 }
 
@@ -367,8 +376,20 @@ function startGame() {
         success: function(data) {
             $('#textLog').empty();
             $('#actionLog').empty();
-            curGame = data;
+            curGame = data.game;
+            lastAction = data.action;
+            totalMoves = 0;
+            totalScore = 0;
+            actionQueue = [];
+
+            // clear the minimap
+            scaleMiniMap(lastAction.outcomes[lastAction.outcomes.length - 1]);
+
+            // log game creation
             logMessage('log', 'Game Created', 'Game.Id :: ' + data.game.gameId);
+
+            // and display the most recent action (new game action)
+            renderAction(lastAction);
         },
         error: function(error) {
             if (error.responseJSON && error.responseJSON.message) {
@@ -415,24 +436,20 @@ async function processActionQueue() {
         });
     }
 
-    logMessage('log', 'ACTION QUEUE EMPTY');
+    logMessage('wrn', 'ACTION QUEUE EMPTY');
 }
 
 function renderAction(action) {
-    // report command and direction
-    // let logMsg = '<pre>';
-    // logMsg += JSON.stringify(action, null, 2);
-    // logMsg += '</pre>';
     let logMsg = '<div class="actionBody">';
 
     logMsg += `Command: ${getObjValName(COMMANDS, action.command)} `;
-    logMsg += `Direction: ${getObjValName(DIRS, action.direction)}`;
+    logMsg += `Direction: ${getObjValName(DIRS, action.direction)}<br>`;
 
-    logMsg += `Sight: ${action.engram.sight}`;
-    logMsg += `Sound: ${action.engram.sound}</br>`;
-    logMsg += `Smell: ${action.engram.smell}</br>`;
-    logMsg += `Touch: ${action.engram.touch}</br>`;
-    logMsg += `Taste: ${action.engram.taste}</br>`;
+    logMsg += `Sight: ${action.engram.sight}<br>`;
+    logMsg += `Sound: ${action.engram.sound}<br>`;
+    logMsg += `Smell: ${action.engram.smell}<br>`;
+    logMsg += `Touch: ${action.engram.touch}<br>`;
+    logMsg += `Taste: ${action.engram.taste}<br>`;
     logMsg += '</div>';
 
     // include message if one was given
@@ -449,42 +466,45 @@ function renderAction(action) {
     totalScore += action.score;
 
     // now dump it all in the log
-    console.log(logMsg);
-    logMessage('log', `${getCommandIcon(action.command)} ${getDirectionIcon(action.direction)} MOVE #${totalMoves},  SCORE: ${totalScore}`, logMsg);
+    logMessage('log', `Action #${totalMoves}, ${totalScore} points. ${getDirectionIcon(action.direction)}${getCommandIcon(action.command)}`, logMsg);
 
-    // DEBUG STUFF : SHOW MAP AND LIST TROPHIES
-    $('#miniMapContent').empty();
-    $('#miniMapContent').append(`<pre>${action.outcomes[action.outcomes.length - 1]}</pre>`);
+    // DEBUG STUFF
+    const mmcPre = $('#miniMapContent > pre');
+    if (mmcPre.length === 0) {
+        scaleMiniMap(action.outcomes[action.outcomes.length - 1]);
+    } else {
+        mmcPre.text(action.outcomes[action.outcomes.length - 1]);
+    }
 }
 
 function getCommandIcon(command) {
     switch (command) {
         case COMMANDS.NONE:
-            return '<span class="ui-icon ui-icon-cancel"></span>';
+            return '<div class="ui-icon ui-icon-cancel" title="No Command"></div>';
         case COMMANDS.FACE:
-            return '<span class="ui-icon ui-icon-refresh"></span>';
+            return '<div class="ui-icon ui-icon-refresh" title="Face"></div>';
         case COMMANDS.LISTEN:
-            return '<span class="ui-icon ui-icon-volume-on"></span>';
+            return '<div class="ui-icon ui-icon-volume-on" title="Listen"></div>';
         case COMMANDS.LOOK:
-            return '<span class="ui-icon ui-icon-search"></span>';
+            return '<div class="ui-icon ui-icon-search" title="Look"></div>';
         case COMMANDS.SIT:
-            return '<span class="ui-icon ui-icon-arrowstop-1-s"></span>';
+            return '<div class="ui-icon ui-icon-arrowstop-1-s" title="Sit"></div>';
         case COMMANDS.SNIFF:
-            return '<span class="ui-icon ui-icon-caret-2-e-w"></span>';
+            return '<div class="ui-icon ui-icon-caret-2-e-w" title="Sniff"></div>';
         case COMMANDS.STAND:
-            return '<span class="ui-icon ui-icon-arrowstop-1-n"></span>';
+            return '<div class="ui-icon ui-icon-arrowstop-1-n" title="Stand"></div>';
         case COMMANDS.TURN:
-            return '<span class="ui-icon ui-icon-refresh"></span>';
+            return '<div class="ui-icon ui-icon-refresh" title="Turn"></div>';
         case COMMANDS.MOVE:
-            return '<span class="ui-icon ui-icon-transfer-e-w"></span>';
+            return '<div class="ui-icon ui-icon-transfer-e-w" title="Move"></div>';
         case COMMANDS.JUMP:
-            return '<span class="ui-icon ui-icon-eject"></span>';
+            return '<div class="ui-icon ui-icon-eject" title="Jump"></div>';
         case COMMANDS.WAIT:
-            return '<span class="ui-icon ui-icon-clock"></span>';
+            return '<div class="ui-icon ui-icon-clock" title="Wait"></div>';
         case COMMANDS.WRITE:
-            return '<span class="ui-icon ui-icon-pencil"></span>';
+            return '<div class="ui-icon ui-icon-pencil" title="Write"></div>';
         case COMMANDS.QUIT:
-            return '<span class="ui-icon ui-icon-power"></span>';
+            return '<div class="ui-icon ui-icon-power" title="Quit"></div>';
     }
     return '';
 }
@@ -492,19 +512,19 @@ function getCommandIcon(command) {
 function getDirectionIcon(direction) {
     switch (direction) {
         case DIRS.NONE:
-            return '<span class="ui-icon ui-icon-arrow-4-diag"></span>';
+            return '<div class="ui-icon ui-icon-arrow-4-diag" title="No Direction"></div>';
         case DIRS.NORTH:
-            return '<span class="ui-icon ui-icon-triangle-1-n"></span>';
+            return '<div class="ui-icon ui-icon-triangle-1-n" title="North"></div>';
         case DIRS.SOUTH:
-            return '<span class="ui-icon ui-icon-triangle-1-s"></span>';
+            return '<div class="ui-icon ui-icon-triangle-1-s" title="South"></div>';
         case DIRS.EAST:
-            return '<span class="ui-icon ui-icon-triangle-1-e"></span>';
+            return '<div class="ui-icon ui-icon-triangle-1-e" title="East"></div>';
         case DIRS.WEST:
-            return '<span class="ui-icon ui-icon-triangle-1-w"></span>';
+            return '<div class="ui-icon ui-icon-triangle-1-w" title="West"></div>';
         case DIRS.LEFT:
-            return '<span class="ui-icon ui-icon-arrowrefresh-1-w"></span>';
+            return '<div class="ui-icon ui-icon-arrowrefresh-1-w" title="Left"></div>';
         case DIRS.RIGHT:
-            return '<span class="ui-icon ui-icon-arrowrefresh-1-e"></span>';
+            return '<div class="ui-icon ui-icon-arrowrefresh-1-e" title="Right"></div>';
     }
     return '';
 }
@@ -533,4 +553,52 @@ function getObjValName(obj, val) {
             return item;
         }
     }
+}
+
+function scaleMiniMap(textRender = '') {
+    const mm = $('#miniMap');
+    const mmc = $('#miniMapContent');
+    const pre = $('#miniMapContent > pre');
+    let rows;
+    let cols;
+
+    // make sure there's something to scale first and that we're
+    if (textRender === '' && pre.length === 0) {
+        return;
+    }
+
+    console.log('starting size: ', mm.width(), mm.height());
+
+    if (textRender !== '') {
+        rows = textRender.split('\n').length;
+        cols = textRender.split('\n')[0].length;
+    } else {
+        rows = pre.text().split('\n').length;
+        cols = pre.text().split('\n')[0].length;
+    }
+
+    // determine the number of characters - scale determined based on
+    // 3x3 maze with text-render of 13 chars per maze column
+    const baseFontSize = parseInt($(':root').css('font-size'));
+    const mazeModOffset = baseFontSize - 13;
+    const mazeMod = (rows > cols ? rows : cols) + mazeModOffset;
+    // console.log(`row-chars: ${rows}, col-chars: ${cols}, mazeMod: ${mazeMod}`);
+
+    const baseSize = parseInt($(':root').css('--miniMapBaseSize'));
+    const newRemSize = (mmc.width() / mazeMod / baseSize).toFixed(3); // :1 aspect ratio, so only check width
+    // console.log(`newRemSize: ${newRemSize}`);
+
+    $(':root').css('--miniMapFontSize', newRemSize + 'rem');
+
+    if (textRender !== '') {
+        if (pre.length === 0) {
+            mmc.html(`<pre>${textRender}</pre`);
+        } else {
+            pre.html(textRender);
+        }
+    }
+
+    mm.width(pre.width() + pre.width() * 0.1);
+    mm.height(pre.height() + $('#miniMap h3').height() + pre.width() * 0.1);
+    // console.log('final size: ', mm.width(), mm.height());
 }
