@@ -1,5 +1,5 @@
-const GAME_URL = 'http://mazemasterjs.com/game';
-//const GAME_URL = 'http://localhost:8080/game';
+//const GAME_URL = 'http://mazemasterjs.com/game';
+const GAME_URL = 'http://localhost:8080/game';
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
 // const TEAM_URL = 'http://localhost:8083/api/team';
@@ -104,7 +104,7 @@ function deleteBotCodeVersion(botId, version) {
  *
  * @param {*} botId
  */
-function loadBotVersions(botId) {
+function loadBotVersions(botId, autoLoadBot = true) {
     const url = TEAM_URL + '/get/botCode?botId=' + botId;
     console.log('Loading bot versions for botId=' + botId);
 
@@ -122,7 +122,9 @@ function loadBotVersions(botId) {
         }
     })
         .done(() => {
-            loadBotCode($('#selBot :selected').val());
+            if (autoLoadBot) {
+                loadBotCode($('#selBot :selected').val());
+            }
         })
         .fail((err) => {
             if (err.status === 404) {
@@ -170,7 +172,7 @@ function loadBotCode(botId, version) {
         });
 
         if (botCode !== undefined) {
-            console.log('Bot Loaded: ' + JSON.stringify(botCode));
+            // console.log('Bot Loaded: ' + JSON.stringify(botCode));
             $('#selBotVersion').val(botCode.version);
             let date = new Date(botCode.lastUpdated);
 
@@ -179,7 +181,14 @@ function loadBotCode(botId, version) {
                 `BOT CODE v${botCode.version} LOADED!`,
                 `v${botCode.version} was saved on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}.`
             );
+
+            // load the code into the editor
             editor.setValue(botCode.code);
+
+            // and format the code once that's done
+            editor.trigger('', 'editor.action.formatDocument');
+
+            setSaveButtonStates(false);
         } else {
             logMessage('wrn', 'BOT CODE NOT FOUND');
         }
@@ -196,43 +205,28 @@ function loadBotCode(botId, version) {
  * @param {*} code
  */
 function updateBotCode(botId, version, code) {
-    console.log(`updateBotCode(botId: ${botId}, version: ${version}, code: ${code.substring(0, 100)}`);
     const putUrl = TEAM_URL + '/update/botCode';
 
-    $.getJSON(getUrl, (docs) => {})
-        .done((docs) => {
-            const newVersion = docs.reverse()[0].version + 1;
-            console.log('top version: ' + newVersion);
-
-            $.ajax({
-                url: putUrl,
-                dataType: 'json',
-                timeout: 1000,
-                method: 'PUT',
-                data: {
-                    botId: botId,
-                    version: version,
-                    code
-                },
-                success: function() {
-                    logMessage('log', `BOT v${newVersion} SAVED`);
-                },
-                error: function(error) {
-                    logMessage('err', 'ERROR SAVING BOT', error.status + ' - ' + error.statusText);
-                }
-            });
-        })
-        .fail((err) => {
-            if (err.status === 404) {
-                asdf;
-            } else {
-                logMessage(
-                    'err',
-                    `ERROR GENERATING NEW BOT VERSION &rsaquo; ${err.status} (${err.statusText})`,
-                    `Unable to determine latest bot version for&nbsp;<b>${botId}</b>.`
-                );
-            }
-        });
+    $.ajax({
+        url: putUrl,
+        dataType: 'json',
+        timeout: 1000,
+        method: 'PUT',
+        data: {
+            botId: botId,
+            version: version,
+            code
+        },
+        success: function() {
+            logMessage('bot', `v<b>${version}</b> - Changes Saved`);
+            setSaveButtonStates(false);
+        },
+        error: function(error) {
+            logMessage('err', 'ERROR UPDATING BOT CODE', error.status + ' - ' + error.statusText);
+        }
+    }).done(() => {
+        loadBotVersions(botId, false);
+    });
 }
 
 /**
@@ -288,7 +282,8 @@ function versionBotCode(botId, code) {
                     code
                 },
                 success: function() {
-                    logMessage('bot', `MouseBot: I am now v<b>${newVersion}</b>!`);
+                    logMessage('bot', `v<b>${newVersion}</b> - Version Created`);
+                    setSaveButtonStates(false);
                 },
                 error: function(error) {
                     if (error.status !== 404) {
@@ -298,7 +293,7 @@ function versionBotCode(botId, code) {
                     }
                 }
             }).done(() => {
-                loadBotVersions(botId);
+                loadBotVersions(botId, false);
             });
         })
         .fail((err) => {
@@ -341,7 +336,11 @@ function logMessage(source, header, message) {
     let htmlOut = `<h3 class="${hdr}">${header}</h3>`;
 
     if (message !== undefined) {
-        htmlOut += `<div class="${bdy}">${message}</div>`;
+        if ((source = 'err')) {
+            htmlOut += `<div class="${bdy}"><pre>${message}</pre></div>`;
+        } else {
+            htmlOut += `<div class="${bdy}">${message}</div>`;
+        }
     } else {
         htmlOut += `<div class="${bdy}"></div>`;
     }
@@ -394,6 +393,20 @@ function startGame() {
                 logMessage('err', 'ERROR STARTING GAME', error.status + ' - ' + error.statusText);
             }
         }
+    });
+}
+
+function loadGame(gameId) {
+    console.log('Loading game ' + gameId);
+    const url = GAME_URL + '/get?gameId=gameId';
+
+    return $.getJSON(url, (data) => {
+        curGame = data[0];
+        totalScore = curGame.score;
+        totalMoves = curGame.moveCount;
+        return Promise.resolve();
+    }).fail((err) => {
+        logMessage('err', 'ERROR LOADING TEAMS', err.status !== 0 ? err.status + ' - ' + err.statusText : undefined);
     });
 }
 
@@ -556,13 +569,71 @@ function getDirectionIcon(direction) {
     return '';
 }
 
+// validates the syntax of code in the editor
+function validateSyntax() {
+    let markers = monaco.editor.getModelMarkers();
+
+    if (markers.length > 0) {
+        let msg = '<span style="color:antiquewhite">';
+        for (const marker of markers) {
+            msg += `Line <b>${marker.endLineNumber}</b>, Column <b>${marker.endColumn}</b>: ${marker.message}<br>`;
+        }
+        msg += '</span>';
+        logMessage('wrn', 'Bot Run Aborted - Syntax Error(s) Found', msg);
+    }
+
+    return markers.length === 0;
+}
+
+// toggles warning queue css classes when sytnax errors exist
+function setWarningQueues(enabled) {
+    if (enabled) {
+        $('#editor').addClass('codeWarnings');
+        $('#btnStartBot').addClass('btnDisabled');
+        $('#btnStartBot').removeClass('btnEnabled');
+        $('#btnStartBot').attr('disabled', true);
+        $('#btnDebugBot').addClass('btnDisabled');
+        $('#btnDebugBot').removeClass('btnEnabled');
+        $('#btnDebugBot').attr('disabled', true);
+    } else {
+        $('#editor').removeClass('codeWarnings');
+        $('#btnStartBot').addClass('btnEnabled');
+        $('#btnStartBot').removeClass('btnDisabled');
+        $('#btnStartBot').attr('disabled', false);
+        $('#btnDebugBot').addClass('btnEnabled');
+        $('#btnDebugBot').removeClass('btnDisabled');
+        $('#btnDebugBot').attr('disabled', false);
+    }
+}
+
 /**
  * Start the bot...
  */
-function startBot() {
-    console.log('Starting bot...');
-    const bot = editor.getValue();
-    eval(bot);
+function startBot(debug = false) {
+    // validate and report errors - if any are found, do not continue
+    if (!validateSyntax()) {
+        return;
+    }
+
+    let bot = editor.getValue();
+
+    // save any outstanding changes when run
+    if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
+        updateBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val(), editor.getValue());
+    }
+
+    // optionally inject the debugger into the start of the bot code
+    if (debug && bot.indexOf('debugger;') === -1) {
+        bot = 'debugger;\n' + bot;
+    }
+
+    try {
+        eval(bot);
+    } catch (evalErr) {
+        console.error(evalErr);
+        logMessage('err', 'Bot Code Error: ' + evalErr.message, `${JSON.stringify(evalErr, null, 2)}`);
+    }
+
     //  processActionQueue();
 }
 
@@ -639,4 +710,17 @@ function scaleMiniMap(textRender = '') {
     mm.width(pre.width() + pre.width() * 0.1);
     mm.height(pre.height() + $('#miniMap h3').height() + pre.width() * 0.1);
     // console.log('final size: ', mm.width(), mm.height());
+}
+
+// Enable chrome's data-loss warning if there are unsaved code changes
+function setSaveButtonStates(enabled) {
+    if (enabled) {
+        $('#btnSaveBotCode').attr('disabled', false);
+        $('#btnSaveBotCode').removeClass('btnDisabled');
+        $('#btnSaveBotCode').addClass('btnEnabled');
+    } else {
+        $('#btnSaveBotCode').attr('disabled', true);
+        $('#btnSaveBotCode').addClass('btnDisabled');
+        $('#btnSaveBotCode').removeClass('btnEnabled');
+    }
 }

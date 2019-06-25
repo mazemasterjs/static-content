@@ -1,175 +1,239 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
 
-    <!-- Fonts  / Icons-->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css?family=Quicksand&display=swap" rel="stylesheet" />
+        <!-- Fonts  / Icons-->
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css?family=Quicksand&display=swap" rel="stylesheet" />
 
-    <!-- Monaco -->
-    <!-- <link rel="stylesheet" data-name="vs/editor/editor.main" href="js/monaco-editor-min/min/vs/editor/editor.main.css" /> -->
-    <link rel="stylesheet" data-name="vs/editor/editor.main" href="node_modules/monaco-editor/min/vs/editor/editor.main.css" />
+        <!-- Monaco -->
+        <!-- <link rel="stylesheet" data-name="vs/editor/editor.main" href="js/monaco-editor-min/min/vs/editor/editor.main.css" /> -->
+        <link rel="stylesheet" data-name="vs/editor/editor.main" href="node_modules/monaco-editor/min/vs/editor/editor.main.css" />
 
-    <!-- jQuery -->
-    <script src="js/jquery-3.4.1.min.js"></script>
+        <!-- jQuery -->
+        <script src="js/jquery-3.4.1.min.js"></script>
 
-    <!-- jQuery UI -->
-    <link rel="stylesheet" href="js/jquery-ui-1.12.1/jquery-ui.css" />
+        <!-- jQuery UI -->
+        <link rel="stylesheet" href="js/jquery-ui-1.12.1/jquery-ui.css" />
 
-    <!-- <script src="external/jquery/jquery.js"></script> -->
-    <script src="js/jquery-ui-1.12.1/jquery-ui.min.js"></script>
+        <!-- <script src="external/jquery/jquery.js"></script> -->
+        <script src="js/jquery-ui-1.12.1/jquery-ui.min.js"></script>
 
-    <!-- MazeMaster Stuff -->
-    <link href="css/style.css" rel="stylesheet" type="text/css" />
-    <script src="js/enums.js"></script>
-    <script src="js/gameFuncs.js"></script>
-    <script src="js/declarations.js"></script>
-    <script src="js/BotAction.js"></script>
-  </head>
-  <body>
-    <header id="pageTitle">
-      <h2>MazeMasterJS - Bot Editor</h2>
-    </header>
+        <!-- MazeMaster Stuff -->
+        <link href="css/style.css" rel="stylesheet" type="text/css" />
+        <script src="js/enums.js"></script>
+        <script src="js/gameFuncs.js"></script>
+        <script src="js/declarations.js"></script>
+        <script src="js/BotAction.js"></script>
+    </head>
+    <body>
+        <header id="pageTitle">
+            <h2>MazeMasterJS - Bot Editor</h2>
+        </header>
 
-    <section id="appContainer">
-      <div class="controls">
-        <label for="selBotVersion">Bot Version:</label>
-        <select id="selBotVersion" class="autoScroll"></select>
-        <button id="btnUpdateBotCode" title="Update the current version of your Bot's code">Save Bot</button>
-        <button id="btnSaveBotCode" title="Save a new version of your Bot's code" class="btnBot">
-          Version Bot
-        </button>
-        <button id="btnStartBot" class="btnBot" title="Run your Bot!">Run Bot</button>
-      </div>
+        <section id="appContainer">
+            <div class="controls">
+                <label for="selBotVersion">Bot Version:</label>
+                <select id="selBotVersion" class="autoScroll"></select>
+                <button id="btnSaveBotCode" class="btnDisabled" title="Save Bot (shortcut: [CTRL + S] in editor)" class="btnBot">
+                    Version Bot
+                </button>
+                <button id="btnStartBot" class="btnBot btnEnabled" title="Run Bot (shortcut: F5 in editor)">Run Bot</button>
+                <button id="btnDebugBot" class="btnBot btnEnabled" title="Debug Bot (shortcut: [CTRL + F5] in editor)">
+                    Debug Bot
+                    <span
+                        class="ui-icon ui-icon-help"
+                        title="Debugging Help"
+                        onmouseover="$('#debugDialog').dialog('open');"
+                        onmouseout="$('#debugDialog').dialog('close');"
+                    ></span>
+                </button>
+            </div>
 
-      <div id="work-grid">
-        <div id="editor" class="grid-item"></div>
-        <div id="output" class="grid-item">
-          <div id="textLog" class="autoScroll"></div>
+            <div id="work-grid">
+                <div id="editor" class="grid-item"></div>
+                <div id="output" class="grid-item">
+                    <div id="textLog" class="autoScroll"></div>
+                </div>
+            </div>
+
+            <div class="selections">
+                <!-- these controls should be replaced with a login feature -->
+                <label for="selMaze">Maze:</label>
+                <select name="selMaze" id="selMaze"></select>
+
+                <label for="selTeam">Team:</label>
+                <select name="selTeam" id="selTeam"></select>
+
+                <label for="selBot">Bot:</label>
+                <select name="selBot" id="selBot"></select>
+
+                <!-- the start game button ... probably will go away -->
+                <button id="startGame" class="btnEnabled" title="Start a new MazeMasterJS game" onclick="startGame()">Start Game</button>
+            </div>
+        </section>
+
+        <div id="miniMap" class="ui-widget-content">
+            <div>
+                <h3 class="ui-widget-header">MINI MAP</h3>
+                <div id="miniMapContent" onresize="scaleMiniMap();"></div>
+            </div>
         </div>
-      </div>
 
-      <div class="selections">
-        <!-- these controls should be replaced with a login feature -->
-        <label for="selMaze">Maze:</label>
-        <select name="selMaze" id="selMaze"></select>
+        <div id="debugDialog" title="Trouble Debugging?">
+            <h3>TIP 1</h3>
+            <p>The developer console need to be open for debugging. Press F12 to toggle it.</p>
+            <h3>TIP 2</h3>
+            <p>Put the following line somewhere in your bot code to pause execution there: <b>debugger;</b></p>
+            <h3>TIP 3</h3>
+            <p>If there are no <b>debugger;</b> lines in your code, execution will pause on line 1.</p>
+        </div>
 
-        <label for="selTeam">Team:</label>
-        <select name="selTeam" id="selTeam"></select>
-
-        <label for="selBot">Bot:</label>
-        <select name="selBot" id="selBot"></select>
-
-        <!-- the start game button ... probably will go away -->
-        <button id="startGame" title="Start a new MazeMasterJS game" onclick="startGame()">Start Game</button>
-      </div>
-    </section>
-
-    <div id="miniMap" class="ui-widget-content">
-      <div>
-        <h3 class="ui-widget-header">MINI MAP</h3>
-        <div id="miniMapContent" onresize="scaleMiniMap();"></div>
-      </div>
-    </div>
-
-    <!-- Load the Monaco Editor -->
-    <script>
-      var require = { paths: { vs: 'js/monaco-editor-min/min/vs' } };
-    </script>
-    <!-- <script src="js/monaco-editor-min/min/vs/loader.js"></script>
+        <!-- Load the Monaco Editor -->
+        <script>
+            var require = {paths: {vs: 'js/monaco-editor-min/min/vs'}};
+        </script>
+        <!-- <script src="js/monaco-editor-min/min/vs/loader.js"></script>
         <script src="js/monaco-editor-min/min/vs/editor/editor.main.nls.js"></script>
         <script src="js/monaco-editor-min/min/vs/editor/editor.main.js"></script> -->
-    <script src="node_modules/monaco-editor/min/vs/loader.js"></script>
-    <script src="node_modules/monaco-editor/min/vs/editor/editor.main.nls.js"></script>
-    <script src="node_modules/monaco-editor/min/vs/editor/editor.main.js"></script>
+        <script src="node_modules/monaco-editor/min/vs/loader.js"></script>
+        <script src="node_modules/monaco-editor/min/vs/editor/editor.main.nls.js"></script>
+        <script src="node_modules/monaco-editor/min/vs/editor/editor.main.js"></script>
 
-    <script>
-      /* CONFIGURE MONACO */
-      const startingScript = "logMessage('bot', 'I am<b>&nbsp;alive!</b>', 'Shall we play a<b>&nbsp;game?</b>');";
+        <script>
+            pageLoadComplete = false;
 
-      // prettier-ignore
-      monaco.languages.typescript.javascriptDefaults.addExtraLib(
-          BOT_ACTION_DECLARATION,
-        );
+            /* CONFIGURE MONACO */
+            const startingScript = "logMessage('bot', 'I am<b>&nbsp;alive!</b>', 'Shall we play a<b>&nbsp;game?</b>');";
 
-      // themes: vs | vs-dark | hc-black
-      const editor = monaco.editor.create(document.getElementById('editor'), {
-        value: startingScript,
-        theme: 'vs-dark',
-        language: 'javascript',
-        lineNumbers: 'on',
-        roundedSelection: false,
-        scrollBeyondLastLine: false,
-        readOnly: false,
-        automaticLayout: true,
-      });
+            // prettier-ignore
+            monaco.languages.typescript.javascriptDefaults.addExtraLib(
+              BOT_ACTION_DECLARATION,
+            );
 
-      // F5 within the code editor will run the bot
-      let myBinding = editor.addCommand(monaco.KeyCode.F5, function() {
-        startBot();
-      });
+            let model = monaco.editor.createModel(startingScript, 'javascript');
 
-      // on page read, bind control events and start loading data
-      $().ready(async () => {
-        console.log('Document ready, loading...');
+            // themes: vs | vs-dark | hc-black
+            const editor = monaco.editor.create(document.getElementById('editor'), {
+                model,
+                theme: 'vs-dark',
+                language: 'javascript',
+                lineNumbers: 'on',
+                roundedSelection: false,
+                scrollBeyondLastLine: false,
+                readOnly: false,
+                automaticLayout: true,
+                formatOnType: true
+            });
 
-        $('#selTeam').change(() => {
-          console.log('team changed');
-          loadBots($('#selTeam :selected').val());
-        });
+            // on page read, bind control events and start loading data
+            $().ready(async () => {
+                console.log('Document ready, loading...');
 
-        $('#selBot').change(() => {
-          console.log('bot changed');
-          loadBotVersions($('#selBot :selected').val());
-          loadBotCode($('#selBot :selected').val());
-        });
+                $('#btnSaveBotCode').click(() => {
+                    versionBotCode($('#selBot :selected').val(), editor.getValue());
+                });
 
-        $('#selBotVersion').change(() => {
-          loadBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val());
-        });
+                $('#btnStartBot').click(() => {
+                    startBot(false);
+                });
 
-        $('#btnSaveBotCode').click(() => {
-          versionBotCode($('#selBot :selected').val(), editor.getValue());
-        });
+                $('#btnDebugBot').click(() => {
+                    startBot(true);
+                });
 
-        $('#btnStartBot').click(() => {
-          startBot();
-        });
+                $('#selTeam').change(() => {
+                    loadBots($('#selTeam :selected').val());
+                });
 
-        $('#btnUpdateBotCode').click(() => {
-          updateBotCode();
-        });
+                $('#selBot').change(() => {
+                    loadBotVersions($('#selBot :selected').val());
+                    loadBotCode($('#selBot :selected').val());
+                });
 
-        // enable tool tips
-        $(document).tooltip();
+                $('#selBotVersion').change(() => {
+                    loadBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val());
+                });
 
-        // Initialize Mini-Map
-        $('#miniMap').resizable({ aspectRatio: 1 });
-        $('#miniMap').draggable();
-        $('#miniMap').position({
-          my: 'right bottom',
-          at: 'center center',
-          of: '#editor',
-          collision: 'fit',
-        });
+                // set up the debug warning dialog
+                $('#debugDialog').dialog({
+                    width: '40vw',
+                    autoOpen: false,
+                    modal: false,
+                    closeText: ''
+                });
 
-        /**
-         * Dynamically scale the mini map content's font size
-         */
-        $('#miniMap').on('resize', function(event, ui) {
-          scaleMiniMap();
-        });
+                // enable tool tips
+                $(document).tooltip();
 
-        // load the controls
-        await loadControls().catch(err => {
-          console.log('load controls error: ' + err.message);
-        });
-      });
-    </script>
-  </body>
+                // Initialize Mini-Map
+                $('#miniMap').resizable({aspectRatio: 1});
+                $('#miniMap').draggable();
+                $('#miniMap').position({
+                    my: 'right bottom',
+                    at: 'right-20 bottom-15',
+                    of: '#editor',
+                    collision: 'fit'
+                });
+
+                /** Set Editor Event Handlers **/
+
+                // F5 within the code editor will run the bot
+                let runBotBinding = editor.addCommand(monaco.KeyCode.F5, function() {
+                    startBot(false);
+                });
+
+                // CTRL+F5 within the code editor will debug the bot
+                let debugBotBinding = editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.F5, function() {
+                    startBot(true);
+                });
+
+                // CTRL+S will auto-format and version the bot code
+                let saveBotBinding = editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, function() {
+                    versionBotCode($('#selBot :selected').val(), editor.getValue());
+                });
+
+                // manage save button states when content changes
+                editor.getModel().onDidChangeContent((event) => {
+                    if (monaco.editor.getModelMarkers().length > 0) {
+                        console.log('errors');
+                        setWarningQueues(true);
+                    } else {
+                        console.log('all good');
+                        setWarningQueues(false);
+                    }
+                    if (pageLoadComplete) {
+                        setSaveButtonStates(true);
+                    }
+                });
+
+                /**
+                 * Dynamically scale the mini map content's font size
+                 */
+                $('#miniMap').on('resize', function(event, ui) {
+                    scaleMiniMap();
+                });
+
+                // load the controls
+                await loadControls()
+                    .then(() => {
+                        pageLoadComplete = true;
+                        window.addEventListener('beforeunload', function(e) {
+                            if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
+                                e.preventDefault();
+                                e.returnValue = '';
+                            }
+                        });
+                    })
+                    .catch((err) => {
+                        console.log('load controls error: ' + err.message);
+                    });
+            });
+        </script>
+    </body>
 </html>
