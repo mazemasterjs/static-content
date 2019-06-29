@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Simple UI</title>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css?family=Quicksand&display=swap" rel="stylesheet" />
+        <link href="css/simple-ui.css" rel="stylesheet" type="text/css" />
+        <script src="javascript/jquery-3.4.1.js"></script>
+        <script src="javascript/enums.mjs"></script>
+        <script src="javascript/renderFuncs.js"></script>
+        <script src="javascript/simple-ui.js"></script>
+    </head>
+
+    <body onresize="resizeGrid(curMaze)">
+        <div id="loadingScreen">
+            <p><i class="material-icons">cloud_download</i> <span id="loadingMessage">Loading...</span> <i class="material-icons">cloud_download</i></p>
+        </div>
+
+        <div id="controls">
+            <div class="optionsContainer">
+                Maze
+                <select id="selMaze"></select>
+            </div>
+            <div class="optionsContainer">
+                Team
+                <select id="selTeam"></select>
+            </div>
+            <div class="optionsContainer">
+                Bot
+                <select id="selBot"></select>
+            </div>
+
+            <div id="controlsContainer">
+                <div style="text-align: center">
+                    Movement
+                </div>
+                <button id="btnNorth" class="controls">N</button>
+                <button id="btnWest" class="controls">W</button>
+                <button id="btnEast" class="controls">E</button>
+                <button id="btnSouth" class="controls">S</button>
+            </div>
+        </div>
+
+        <div id="mazeView" class="grid-container"></div>
+
+        <footer>
+            <script>
+                $(document).ready(function() {
+                    loadTeamSelect();
+                    loadBotSelect();
+                    loadMazeSelect();
+
+                    $('#selMaze').change(function() {
+                        loadMaze($('#selMaze option:selected').val());
+                    });
+
+                    $('#selTeam').change(function() {
+                        loadBotSelect($('#selTeam option:selected').val());
+                    });
+
+                    $('#btnNorth').click(function() {
+                        movePlayer(curLoc.row - 1, curLoc.col, DIRS.NORTH);
+                    });
+
+                    $('#btnSouth').click(function() {
+                        movePlayer(curLoc.row + 1, curLoc.col, DIRS.SOUTH);
+                    });
+
+                    $('#btnEast').click(function() {
+                        movePlayer(curLoc.row, curLoc.col + 1, DIRS.EAST);
+                    });
+
+                    $('#btnWest').click(function() {
+                        movePlayer(curLoc.row, curLoc.col - 1, DIRS.WEST);
+                    });
+                });
+            </script>
+        </footer>
+    </body>
+</html>
