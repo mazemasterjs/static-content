@@ -9,11 +9,12 @@
 
     <!-- Fonts  / Icons-->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css?family=Quicksand&display=swap" rel="stylesheet" />
 
     <!-- Monaco -->
     <link rel="stylesheet" data-name="vs/editor/editor.main" href="js/monaco-editor-min/min/vs/editor/editor.main.css" />
-    
+
     <!-- jQuery -->
     <script src="js/jquery-3.4.1.min.js"></script>
 
@@ -28,9 +29,9 @@
     <script src="js/enums.js"></script>
     <script src="js/gameFuncs.js"></script>
     <script src="js/declarations.js"></script>
-    <script src="js/BotAction.js"></script>
     <script src="js/skully.js"></script>
   </head>
+
   <body>
     <header id="pageTitle">
       <h2>MazeMasterJS - Bot Editor</h2>
@@ -44,6 +45,7 @@
           Version Bot
         </button>
         <button id="btnStartBot" class="btnBot btnEnabled" title="Run Bot (shortcut: F5 in editor)">Run Bot</button>
+        <button id="btnStepBot" class="btnBot btnEnabled" title="Run Bot (shortcut: [SHIFT + F5] in editor)">Step Bot</button>
         <button id="btnDebugBot" class="btnBot btnEnabled" title="Debug Bot (shortcut: [CTRL + F5] in editor)">
           Debug Bot
           <span
@@ -53,7 +55,7 @@
             onmouseout="$('#debugDialog').dialog('close');"
           ></span>
         </button>
-        <button id="btnEmergencyStop" class="btnEmergencyStop" title="">
+        <button id="btnEmergencyStop" class="btnEmergencyStop" title="Runaway bot? Click here!">
           STOP
         </button>
       </div>
@@ -75,18 +77,15 @@
 
         <label for="selBot">Bot:</label>
         <select name="selBot" id="selBot"></select>
-
-        <!-- the start game button ... probably will go away -->
-        <button id="startGame" class="btnEnabled" title="Start a new MazeMasterJS game" onclick="startGame()">Start Game</button>
       </div>
     </section>
 
     <div id="miniMap" class="ui-widget-content">
-        <h3 class="ui-widget-header">MINI MAP</span></h3>
-        <div id="miniMapContent" onresize="scaleMiniMap();"></div>
+      <h3 class="ui-widget-header">MINI MAP</h3>
+      <div id="miniMapContent" onresize="scaleMiniMap();"></div>
     </div>
 
-    <div id="debugDialog" title="Trouble Debugging?">
+    <div id="debugDialog" title="Trouble Debugging?" style="display: none">
       <h3>TIP 1</h3>
       <p>The developer console need to be open for debugging. Press F12 to toggle it.</p>
       <h3>TIP 2</h3>
@@ -113,8 +112,8 @@
 
       // prettier-ignore
       monaco.languages.typescript.javascriptDefaults.addExtraLib(
-              BOT_ACTION_DECLARATION,
-            );
+        MMJS_EDITOR_LIB,
+    );
 
       let model = monaco.editor.createModel(startingScript, 'javascript');
 
@@ -142,15 +141,14 @@
           if ($('#miniMapContent').css('display') === 'none') {
             mm.css('min-height', 'var(--miniMapBaseSize)');
             $('#miniMapContent').show();
-            mm.resizable( "enable" );
+            mm.resizable('enable');
             scaleMiniMap();
           } else {
             mm.css('min-height', '0');
             mm.height($('#miniMap > h3').height());
             $('#miniMapContent').hide();
-            mm.resizable( "disable" );
+            mm.resizable('disable');
           }
-
         });
 
         $('#btnSaveBotCode').click(() => {
@@ -159,12 +157,17 @@
 
         $('#btnStartBot').click(() => {
           EMERGENCY_STOP_BUTTON_PUSHED = false;
-          startBot(false);
+          startBot(false, false);
+        });
+
+        $('#btnStepBot').click(() => {
+          EMERGENCY_STOP_BUTTON_PUSHED = false;
+          startBot(true, false);
         });
 
         $('#btnDebugBot').click(() => {
           EMERGENCY_STOP_BUTTON_PUSHED = false;
-          startBot(true);
+          startBot(true, true);
         });
 
         $('#btnEmergencyStop').click(() => {
@@ -229,12 +232,17 @@
 
         // F5 within the code editor will run the bot
         let runBotBinding = editor.addCommand(monaco.KeyCode.F5, function() {
-          startBot(false);
+          startBot(false, false);
         });
 
         // CTRL+F5 within the code editor will debug the bot
         let debugBotBinding = editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.F5, function() {
-          startBot(true);
+          startBot(false, true);
+        });
+
+        // SHIFT+F5 within the code editor will step-run the bot
+        let stepBotBinding = editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.F5, function() {
+          startBot(true, true);
         });
 
         // CTRL+S will auto-format and version the bot code
