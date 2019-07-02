@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 let skully = '';
 skully = skully + '                     .ed"""" """$$$$be.\n';
 skully = skully + '                   -"           ^""**$$$e.\n';

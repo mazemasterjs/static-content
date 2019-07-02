@@ -1,9 +1,21 @@
+/* eslint-disable no-unused-vars */
+const CALLBACK_DELAY = 50;
 const FAIL_IMG_COUNT = 31;
 const SUCC_IMG_COUNT = 32;
 const AJAX_TIMEOUT = 5000;
 
+// eslint-disable-next-line prefer-const
+let EMERGENCY_STOP_BUTTON_PUSHED = false;
+
+// eslint-disable-next-line prefer-const
+let botCallback = null;
+let lastActionResult = null;
+
+// TODO: Replace myCreds with a login and use btoa(userName + ':' + password) to send the Basic Auth header
+const myCreds = 'a3JlZWJvZzoxc3VwZXIx';
+
 const GAME_URL = 'http://mazemasterjs.com/game';
-//const GAME_URL = 'http://localhost:8080/game';
+// const GAME_URL = 'http://localhost:8080/game';
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
 // const TEAM_URL = 'http://localhost:8083/api/team';
@@ -13,99 +25,192 @@ let curGame = {};
 let totalMoves = 0;
 let totalScore = 1000;
 
-// stringify and formaat return json string for
-// cleaner action/engram rendering
+/**
+ * Stringify and formaat return json string for cleaner action/engram rendering
+ *
+ * @param {JSONObject} obj
+ * @return {string}
+ */
 const jsonToStr = obj => {
   return JSON.stringify(obj).replace(/\,\"/g, ', "');
 };
 
 /**
- * Loads the controls on the page
+ * Promise chain for control loading based on
+ * order of load requirements
+ * @return {Promise}
  */
 async function loadControls() {
+  console.log('loadControls -> mazes');
   return loadMazes().then(() => {
+    console.log(' loadControls -> teams');
     return loadTeams().then(() => {
+      console.log('  loadControls -> bots');
       return loadBots($('#selTeam :selected').val()).then(() => {
+        console.log('loadControls -> Promise chain complete.');
         logMessage('log', 'READY TO&nbsp;<b>ROCK!</b>', 'The bot editor is ready.');
       });
     });
   });
 }
 
-// resets the global game tracking values
+/**
+ * Resets global tracking variables
+ */
 function resetTrackingVars() {
   curGame = {};
   totalMoves = 0;
   totalScore = 1000;
 }
 
+/**
+ * Loads maze data into local controls
+ * @return {Promise}
+ */
 function loadMazes() {
-  console.debug('Loading maze list...');
-  return $.getJSON(MAZE_URL + '/get', mazes => {
-    $('#selMaze').empty();
+  const MAZE_GET_URL = `${MAZE_URL}/get`;
+  console.log(' -> loadMazes -> ', MAZE_GET_URL);
 
-    for (const maze of mazes) {
-      let opt = "<option value='" + maze.id + "'>";
-      opt += `${maze.name} (${maze.height} x ${maze.width})`;
-      opt += '</option>';
-      $('#selMaze').append(opt);
-    }
-    return Promise.resolve();
-  }).fail(err => {
-    logMessage('err', 'ERROR LOADING MAZES', err !== undefined ? `${error.status} - ${error.statusText}` : undefined);
+  return $.ajax({
+    url: MAZE_GET_URL,
+    dataType: 'json',
+    method: 'GET',
+    headers: { Authorization: 'Basic ' + myCreds },
+    success: function(mazes) {
+      $('#selMaze').empty();
+      for (const maze of mazes) {
+        let opt = "<option value='" + maze.id + "'>";
+        opt += `${maze.name} (${maze.height} x ${maze.width})`;
+        opt += '</option>';
+        $('#selMaze').append(opt);
+      }
+      return Promise.resolve();
+    },
+    error: function(mazeLoadErr) {
+      logMessage('err', 'ERROR LOADING MAZES', mazeLoadErr !== undefined ? `${mazeLoadErr.status} - ${mazeLoadErr.statusText}` : undefined);
+    },
   });
 }
 
+/**
+ * Loads team values into controls
+ *
+ * @return {Promise}
+ */
 function loadTeams() {
-  console.log('Loading teams list...');
-  return $.getJSON(TEAM_URL + '/get', data => {
-    teams = data;
-    $('#selTeam').empty();
-
-    for (const team of teams) {
-      let opt = "<option value='" + team.id + "'>";
-      opt += team.name;
-      opt += '</option>';
-      $('#selTeam').append(opt);
-    }
-    return Promise.resolve();
-  }).fail(err => {
-    logMessage('err', 'ERROR LOADING TEAMS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
+  const TEAM_GET_URL = `${TEAM_URL}/get`;
+  console.log('  -> loadTeams -> ', TEAM_GET_URL);
+  return $.ajax({
+    url: TEAM_GET_URL,
+    dataType: 'json',
+    method: 'GET',
+    headers: { Authorization: 'Basic ' + myCreds },
+    success: function(teams) {
+      $('#selTeam').empty();
+      for (const team of teams) {
+        let opt = "<option value='" + team.id + "'>";
+        opt += team.name;
+        opt += '</option>';
+        $('#selTeam').append(opt);
+      }
+      return Promise.resolve();
+    },
+    error: function(error) {
+      logMessage('err', 'ERROR LOADING TEAMS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
+    },
   });
 }
 
+/**
+ * Loads bot values into controls for given team
+ * @param {*} teamId
+ */
 async function loadBots(teamId) {
-  console.log('Loading bots for team ' + teamId);
-  if (!teams || !teamId) return;
+  const BOT_GET_URL = `${TEAM_URL}/get?id=${teamId}`;
+  console.log('   -> loadBots -> ', teamId, BOT_GET_URL);
+  if (!teamId) return;
 
-  return $.getJSON(TEAM_URL + '/get?id=' + teamId, data => {
-    team = data[0];
-    $('#selBot').empty();
+  return $.ajax({
+    url: BOT_GET_URL,
+    dataType: 'json',
+    method: 'GET',
+    headers: { Authorization: 'Basic ' + myCreds },
+    success: function(data) {
+      const team = data[0];
+      $('#selBot').empty();
 
-    for (const bot of team.bots) {
-      let botSel = `<option value='${bot.id}' name='${bot.name}'>${bot.name} (${bot.coder})</option>`;
-      $('#selBot').append(botSel);
-    }
+      for (const bot of team.bots) {
+        const botSel = `<option value='${bot.id}' name='${bot.name}'>${bot.name} (${bot.coder})</option>`;
+        $('#selBot').append(botSel);
+      }
 
-    let debugBotSel = "<option value='jd-test-bot'>";
-    debugBotSel += 'jd-test-bot (jd-test-bot)';
-    debugBotSel += '</option>';
-    $('#selBot').append(debugBotSel);
-  })
-    .done(() => {
-      loadBotVersions($('#selBot :selected').val());
-    })
-    .fail(err => {
+      let debugBotSel = "<option value='jd-test-bot'>";
+      debugBotSel += 'jd-test-bot (jd-test-bot)';
+      debugBotSel += '</option>';
+      $('#selBot').append(debugBotSel);
+    },
+    error: function(error) {
       logMessage('err', 'ERROR LOADING BOTS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
-    });
+    },
+  }).done(() => {
+    loadBotVersions($('#selBot :selected').val());
+  });
 }
 
+/**
+ * Populates the version select control with all versions available for the given bot
+ * @param {*} botId
+ * @param {*} autoLoadBot
+ * @return {void}
+ */
+function loadBotVersions(botId, autoLoadBot = true) {
+  const BOT_CODE_URL = TEAM_URL + '/get/botCode?botId=' + botId;
+  console.log('    -> loadBotVersions ->', botId);
+
+  return $.ajax({
+    url: BOT_CODE_URL,
+    dataType: 'json',
+    method: 'GET',
+    headers: { Authorization: 'Basic ' + myCreds },
+    success: function(docs) {
+      $('#selBotVersion').empty();
+      let versionCount = 0;
+      for (const doc of docs.reverse()) {
+        versionCount++;
+        if (versionCount > 25) {
+          deleteBotCodeVersion(botId, doc.version);
+        } else {
+          $('#selBotVersion').append(`<option value="${doc.version}">${doc.version}</option>`);
+        }
+      }
+    },
+    error: function(error) {
+      if (err.status === 404) {
+        versionBotCode(botId, editor.getValue());
+      } else {
+        logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${err.status} (${err.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}</b>.`);
+      }
+    },
+  }).done(() => {
+    if (autoLoadBot) {
+      loadBotCode($('#selBot :selected').val());
+    }
+  });
+}
+
+/**
+ * Delete teh specified code version for the given botId
+ *
+ * @param {*} botId
+ * @param {*} version
+ */
 function deleteBotCodeVersion(botId, version) {
-  const deleteUrl = TEAM_URL + `/delete/botCode/${botId}/${version}`;
+  const DELETE_BOT_CODE_URL = TEAM_URL + `/delete/botCode/${botId}/${version}`;
   $.ajax({
-    url: deleteUrl,
+    url: DELETE_BOT_CODE_URL,
     dataType: 'json',
     method: 'DELETE',
+    headers: { Authorization: 'Basic ' + myCreds },
     success: function() {
       logMessage('wrn', `BOT CODE v${version} DELETED`);
     },
@@ -116,99 +221,67 @@ function deleteBotCodeVersion(botId, version) {
 }
 
 /**
- * Populates the version select control with all versions available for the given bot
- *
- * @param {*} botId
- */
-function loadBotVersions(botId, autoLoadBot = true) {
-  const url = TEAM_URL + '/get/botCode?botId=' + botId;
-  console.log('Loading bot versions for botId=' + botId);
-
-  return $.getJSON(url, docs => {
-    $('#selBotVersion').empty();
-    console.log(`${docs.length} versions found`);
-    let versionCount = 0;
-    for (const doc of docs.reverse()) {
-      versionCount++;
-      if (versionCount > 25) {
-        deleteBotCodeVersion(botId, doc.version);
-      } else {
-        $('#selBotVersion').append(`<option value="${doc.version}">${doc.version}</option>`);
-      }
-    }
-  })
-    .done(() => {
-      if (autoLoadBot) {
-        loadBotCode($('#selBot :selected').val());
-      }
-    })
-    .fail(err => {
-      if (err.status === 404) {
-        versionBotCode(botId, editor.getValue());
-      } else {
-        logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${err.status} (${err.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}</b>.`);
-      }
-    });
-}
-
-/**
  * Loads the version of bot  code associated with botId.version - if no
  * version is provided, loads the latest version instead
  *
  * @param {*} botId
  * @param {*} version
+ * @return {void}
  */
 function loadBotCode(botId, version) {
-  let url = TEAM_URL + '/get/botCode?botId=' + botId;
+  let BOT_CODE_URL = TEAM_URL + '/get/botCode?botId=' + botId;
 
   // if no version supplied, assume we're getting the latest version
   if (version === undefined) {
     version = -1;
   } else {
-    url += `&version=${version}`;
+    BOT_CODE_URL += `&version=${version}`;
   }
 
-  console.log(`Loading bot code - botId=${botId}, version=${version}`);
+  console.log('loadBotCode', botId, version, BOT_CODE_URL);
 
-  return $.getJSON(url, docs => {
-    let botCode;
+  return $.ajax({
+    url: BOT_CODE_URL,
+    dataType: 'json',
+    method: 'GET',
+    headers: { Authorization: 'Basic ' + myCreds },
+    success: function(docs) {
+      // if no version given, find the higest version returned
+      if (version === -1) {
+        version = docs.sort((first, second) => {
+          return parseInt(second.version.replace(/\./g, '')) - parseInt(first.version.replace(/\./g, ''));
+        })[0].version;
+      }
 
-    // if no version given, find the higest version returned
-    if (version === -1) {
-      version = docs.sort((first, second) => {
-        return parseInt(second.version.replace(/\./g, '')) - parseInt(first.version.replace(/\./g, ''));
-      })[0].version;
-    }
+      // now load the version
+      const botCode = docs.find(doc => {
+        return doc.version === version;
+      });
 
-    console.log(`version = ${version}`);
+      if (botCode !== undefined) {
+        $('#selBotVersion').val(botCode.version);
+        const date = new Date(botCode.lastUpdated);
 
-    // now load the version
-    botCode = docs.find(doc => {
-      return doc.version === version;
-    });
+        logMessage(
+          'log',
+          `"${$('#selBot :selected').attr('name')}" v${botCode.version} Loaded.`,
+          `"${$('#selBot :selected').attr('name')}" v${botCode.version} was last saved on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}.`,
+        );
 
-    if (botCode !== undefined) {
-      $('#selBotVersion').val(botCode.version);
-      let date = new Date(botCode.lastUpdated);
+        // load the code into the editor
+        editor.setValue(botCode.code);
 
-      logMessage(
-        'log',
-        `"${$('#selBot :selected').attr('name')}" v${botCode.version} Loaded.`,
-        `"${$('#selBot :selected').attr('name')}" v${botCode.version} was saved on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}.`,
-      );
+        // and format the code once that's done
+        editor.trigger('', 'editor.action.formatDocument');
 
-      // load the code into the editor
-      editor.setValue(botCode.code);
-
-      // and format the code once that's done
-      editor.trigger('', 'editor.action.formatDocument');
-
-      setSaveButtonStates(false);
-    } else {
-      logMessage('wrn', 'BOT CODE NOT FOUND');
-    }
-  }).fail(err => {
-    logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${err.status} (${err.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}.</b>`);
+        setSaveButtonStates(false);
+      } else {
+        logMessage('wrn', 'BOT CODE NOT FOUND');
+      }
+    },
+    error: function(error) {
+      logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${err.status} (${err.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}.</b>`);
+    },
   });
 }
 
@@ -217,16 +290,22 @@ function loadBotCode(botId, version) {
  * the bot_code collection.
  *
  * @param {*} botId
+ * @param {*} version
  * @param {*} code
+ * @return {void}
  */
 function updateBotCode(botId, version, code) {
   const putUrl = TEAM_URL + '/update/botCode';
+
+  // first, format the code in the editor
+  editor.trigger('', 'editor.action.formatDocument');
 
   $.ajax({
     url: putUrl,
     dataType: 'json',
     timeout: AJAX_TIMEOUT,
     method: 'PUT',
+    headers: { Authorization: 'Basic ' + myCreds },
     data: {
       botId: botId,
       version: version,
@@ -234,9 +313,7 @@ function updateBotCode(botId, version, code) {
     },
     success: function() {
       logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${version}</b>&nbsp;- Updated.`);
-
-      // and format the code once that's done
-      editor.trigger('', 'editor.action.formatDocument');
+      setSaveButtonStates(false);
     },
     error: function(error) {
       logMessage('err', 'ERROR UPDATING BOT CODE', `${error.status} - ${error.statusText}`);
@@ -250,9 +327,10 @@ function updateBotCode(botId, version, code) {
  * Calculate and return the next mock-version number
  *
  * @param {*} version
+ * @return {string}
  */
 function getNextVersion(version) {
-  let curVer = version.split('.');
+  const curVer = version.split('.');
   if (parseInt(curVer[2]) === 9) {
     curVer[2] = 0;
     if (parseInt(curVer[1]) === 9) {
@@ -274,13 +352,19 @@ function getNextVersion(version) {
  *
  * @param {*} botId
  * @param {*} code
+ * @return {void}
  */
 function versionBotCode(botId, code) {
-  const getUrl = TEAM_URL + '/get/botCode?botId=' + botId;
-  const putUrl = TEAM_URL + '/insert/botCode';
+  const GET_BOT_CODE_URL = TEAM_URL + '/get/botCode?botId=' + botId;
+  const PUT_BOT_CODE_URL = TEAM_URL + '/insert/botCode';
 
-  $.getJSON(getUrl, docs => {})
-    .done(docs => {
+  $.ajax({
+    url: GET_BOT_CODE_URL,
+    dataType: 'json',
+    timeout: AJAX_TIMEOUT,
+    method: 'GET',
+    headers: { Authorization: 'Basic ' + myCreds },
+    success: function(docs) {
       topVersion = docs.sort((first, second) => {
         return parseInt(second.version.replace(/\./g, '')) - parseInt(first.version.replace(/\./g, ''));
       })[0].version;
@@ -289,10 +373,11 @@ function versionBotCode(botId, code) {
       console.log('Next Version=' + newVersion);
 
       $.ajax({
-        url: putUrl,
+        url: PUT_BOT_CODE_URL,
         dataType: 'json',
         timeout: AJAX_TIMEOUT,
         method: 'PUT',
+        headers: { Authorization: 'Basic ' + myCreds },
         data: {
           botId: botId,
           version: newVersion,
@@ -312,13 +397,14 @@ function versionBotCode(botId, code) {
       }).done(() => {
         loadBotVersions(botId, false);
       });
-    })
-    .fail(err => {
+    },
+    error: function(error) {
       $.ajax({
-        url: putUrl,
+        url: PUT_BOT_CODE_URL,
         dataType: 'json',
         timeout: AJAX_TIMEOUT,
         method: 'PUT',
+        headers: { Authorization: 'Basic ' + myCreds },
         data: {
           botId: botId,
           version: '0.0.1',
@@ -334,7 +420,8 @@ function versionBotCode(botId, code) {
           logMessage('err', 'ERROR INITIALIZING BOT', `${error.status} - ${error.statusText} initializing bot&nbsp;<b>${botId}</span>`);
         },
       });
-    });
+    },
+  });
 }
 
 /**
@@ -343,6 +430,7 @@ function versionBotCode(botId, code) {
  * @param {*} source log | bot | wrn | err
  * @param {*} header The contents of the header section
  * @param {*} message The contents of the body section
+ * @return {void}
  */
 function logMessage(source, header, message) {
   const textLog = $('#textLog');
@@ -368,17 +456,23 @@ function logMessage(source, header, message) {
   textLog.scrollTop(textLog[0].scrollHeight);
 }
 
-function startGame() {
+/**
+ * Attempts to create a new MMJS Game
+ *
+ * @return {void}
+ */
+async function startGame() {
   const mazeId = $('#selMaze').val();
   const teamId = $('#selTeam').val();
   const botId = $('#selBot :selected').val();
-  const url = GAME_URL + '/new/' + mazeId + '/' + teamId + '/' + botId + '?forceId=FORCED_JD_EDITOR_002';
+  const url = GAME_URL + '/new/' + mazeId + '/' + teamId + '/' + botId;
 
-  $.ajax({
+  return await $.ajax({
     url: url,
     dataType: 'json',
     timeout: AJAX_TIMEOUT,
     method: 'PUT', // method is any HTTP method
+    headers: { Authorization: 'Basic ' + myCreds },
     data: {}, // data as js object
     success: function(data) {
       $('#textLog').empty();
@@ -388,52 +482,161 @@ function startGame() {
       curGame = data.game;
       totalMoves = data.game.score.moveCount;
       totalScore = data.totalScore;
+      lastActionResult = data;
 
       // load the minimap
-      let mapText = faceAvatar(data.action.outcomes[data.action.outcomes.length - 1], DIRS.SOUTH);
-      scaleMiniMap(mapText);
+      scaleMiniMap(faceAvatar(data.action.outcomes[data.action.outcomes.length - 1], DIRS.SOUTH));
 
       // log game creation
       logMessage('log', 'Game Created', `gameId ->${data.game.gameId}`);
 
       // and display the most recent action (new game action)
       renderAction(data);
+
+      return Promise.resolve(data.game);
     },
-    error: function(error) {
-      if (error.responseJSON && error.responseJSON.message) {
-        if (error.responseJSON.message.indexOf('game already exists') >= 0) {
-          loadGame(error.responseJSON.gameId);
+    error: async function(err) {
+      if (err.responseJSON !== undefined) {
+        const res = err.responseJSON;
+        if (res.status === 400 && res.gameId !== undefined) {
+          logMessage('wrn', 'GAME IN PROGRESS', `gameId: ${res.gameId}`);
         } else {
-          logMessage('err', 'ERROR STARTING GAME', `${error.status} - ${error.statusText}`);
+          return Promise.reject(err);
         }
       } else {
-        logMessage('err', 'ERROR STARTING GAME', `${error.status} - ${error.statusText}`);
+        console.warn('startGame -> ajax', err);
+        logMessage('err', 'ERROR STARTING GAME', `${err.status} - ${err.statusText}`);
+        return Promise.reject(err);
       }
     },
   });
 }
 
+/**
+ * Attempts to load an existing MMJS game from the given gameId
+ *
+ * @param {*} gameId
+ */
 async function loadGame(gameId) {
-  const url = GAME_URL + `/get/${gameId}`;
+  const LOAD_GAME_URL = GAME_URL + `/get/${gameId}`;
+  console.log('loadGame', LOAD_GAME_URL);
 
-  await $.getJSON(url, data => {
-    curGame = data.game;
-    totalScore = data.totalScore;
-    totalMoves = data.game.score.moveCount;
+  return await $.ajax({
+    url: LOAD_GAME_URL,
+    dataType: 'json',
+    timeout: AJAX_TIMEOUT,
+    method: 'GET', // method is any HTTP method
+    headers: { Authorization: 'Basic ' + myCreds },
+    data: {}, // data as js object
+    success: function(data) {
+      curGame = data.game;
+      totalScore = data.totalScore;
+      totalMoves = data.game.score.moveCount;
+      lastActionResult = data;
 
-    // log status
-    logMessage('wrn', 'RESUMING GAME IN PROGRESS', `gameId ->${data.game.gameId}`);
+      // render the game action
+      renderAction(data);
 
-    // render the game action
-    renderAction(data);
+      // load the minimap
+      const mapText = faceAvatar(data.action.outcomes[data.action.outcomes.length - 1], data.playerFacing);
+      scaleMiniMap(mapText);
 
-    // load the minimap
-    let mapText = faceAvatar(data.action.outcomes[data.action.outcomes.length - 1], data.playerFacing);
-    scaleMiniMap(mapText);
-    1;
-  }).fail(err => {
-    logMessage('err', 'ERROR LOADING GAME', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
+      return Promise.resolve(data.game);
+    },
+    error: async function(err) {
+      console.error('loadGame', err);
+      logMessage('err', 'ERROR LOADING GAME', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
+      return Promise.reject(err);
+    },
   });
+}
+
+/**
+ * Starts the bot by injecting and calling the goBot() function with or without
+ * injected callback and debugger lines.
+ *
+ * @param {*} singleStep - if true, starts the bot without a callback parameter
+ * @param {*} debug - adds/removes debugger; lines in bot code, as needed
+ *
+ */
+async function startBot(singleStep = true, debug = false) {
+  console.log('startBot', singleStep, debug);
+  const injectionTag = '\n// @INJECTED_CODE\n';
+  const debugStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
+  const stepStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
+  const loopStart = injectionTag + 'botCallback = goBot;\ngoBot(lastActionResult);';
+  const debugScript = injectionTag + 'debugger;\n';
+
+  // validate and report errors - if any are found, do not continue
+  if (!validateSyntax()) {
+    return;
+  }
+
+  let botCode = editor.getValue() + '';
+  if (botCode.trim() === '') {
+    logMessage('err', 'NO CODE TO RUN', 'Your bot code editor appears to be empty. You must write some code before you can run it!');
+    return;
+  }
+
+  if (curGame.gameId === undefined || lastActionResult === null) {
+    const gameReady = await startGame()
+      .then(newGame => {
+        console.log('startBot -> Game created.', `GameId: ${newGame.gameId}`);
+        return true;
+      })
+      .catch(async ngErr => {
+        if (ngErr.responseJSON !== undefined && ngErr.responseJSON.status === 400) {
+          const res = ngErr.responseJSON;
+          if (res.gameId !== '') {
+            console.log('startBot -> Game in progress, attempting to reconnect.', `GameId: ${res.gameId}`);
+
+            return await loadGame(res.gameId)
+              .then(existingGame => {
+                console.log('startBot -> Game loaded.', `GameId: ${existingGame.gameId}`);
+                return true;
+              })
+              .catch(lgErr => {
+                console.error('startBot -> loadGame -> Error', lgErr);
+                return false;
+              });
+          } else {
+            console.error('startBot -> startGame -> Error', lgErr);
+            return false;
+          }
+        }
+      });
+
+    // if we didn't get a good game, bail out - start/getGame functions will log the errors.
+    if (!gameReady) {
+      const startBotErr = new Error('Unable to start or load a game.');
+      logMessage('err', 'UNABLE TO START GAME', 'An error is preventing a game from being created and/or started. Seek assistance.');
+      console.error('startBot', startBotErr);
+      return;
+    }
+  }
+
+  // save any outstanding changes when run
+  if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
+    updateBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val(), editor.getValue());
+  }
+
+  // inject script values appropriate to the run time selected
+  if (debug && botCode.indexOf('debugger;') === -1) {
+    const insKey = 'function goBot(data) {';
+    const insAt = botCode.indexOf(insKey);
+    const bcTop = botCode.substr(0, insAt + insKey.length);
+    const bcBot = botCode.substr(insAt + insKey.length);
+    botCode = bcTop + debugScript + bcBot + debugStart;
+  } else if (singleStep) {
+    botCode = botCode.replace(/debugger;/g, '');
+    botCode = botCode + stepStart;
+  } else {
+    botCode = botCode.replace(/debugger;/g, '');
+    botCode = botCode + loopStart;
+  }
+
+  // give the bot it's day in the sun...
+  eval(botCode); // <-- TRY/CATCH HERE MASKS ERRORS THAT HAPPEN WITHIN THE BOT - IN-BOT ERROR HANDLING WOULD BE WISE
 }
 
 /**
@@ -444,12 +647,13 @@ async function loadGame(gameId) {
  */
 async function executeAction(action) {
   console.log('executeAction', action);
-  const url = GAME_URL + '/action';
+  const GAME_ACTION_URL = GAME_URL + '/action';
 
   return await $.ajax({
-    url: url,
-    method: 'PUT', // method is any HTTP method
+    url: GAME_ACTION_URL,
+    method: 'PUT',
     dataType: 'json',
+    headers: { Authorization: 'Basic ' + myCreds },
     data: action,
   })
     .then(data => {
@@ -461,6 +665,11 @@ async function executeAction(action) {
     });
 }
 
+/**
+ * Renders the given action result
+ *
+ * @param {*} result
+ */
 function renderAction(result) {
   console.log('renderAction', result);
   const action = result.action;
@@ -484,27 +693,33 @@ function renderAction(result) {
     logMsg += '<hr>';
   }
 
+  // grab the current millis time as an action/engram ID
+  const actId = Date.now();
+
   // log the local "here" engram
-  logMsg += `<h5>ENGRAM.HERE</h5>`;
-  logMsg += `<span class='engramData'><b>.exitNorth=</b>${jsonToStr(engram.here.exitNorth)}</span>`;
-  logMsg += `<span class='engramData'><b>.exitSouth=</b>${jsonToStr(engram.here.exitSouth)}</span>`;
-  logMsg += `<span class='engramData'><b>.exitEast=</b>${jsonToStr(engram.here.exitEast)}</span>`;
-  logMsg += `<span class='engramData'><b>.exitWest=</b>${jsonToStr(engram.here.exitWest)}</span>`;
-  logMsg += `<span class='engramData'><b>.messages=</b>${jsonToStr(engram.here.messages)}</span>`;
-  logMsg += `<span class='engramData'><b>.intuition=</b>${jsonToStr(engram.here.intuition)}</span>`;
+  logMsg += `<div id="${actId}_HERE" class="engramContainer" onclick="toggleEngramContent('${actId}_HERE');">`;
+  logMsg += `  <h5><span id="${actId}_HERE_icon" class="ui-icon ui-icon-plusthick"></span>ENGRAM.HERE</h5>`;
+  logMsg += `  <p class='engramData' style="display:none"><b>.exitNorth=</b>${jsonToStr(engram.here.exitNorth)}</p>`;
+  logMsg += `  <p class='engramData' style="display:none"><b>.exitSouth=</b>${jsonToStr(engram.here.exitSouth)}</p>`;
+  logMsg += `  <p class='engramData' style="display:none"><b>.exitEast=</b>${jsonToStr(engram.here.exitEast)}</p>`;
+  logMsg += `  <p class='engramData' style="display:none"><b>.exitWest=</b>${jsonToStr(engram.here.exitWest)}</p>`;
+  logMsg += `  <p class='engramData' style="display:none"><b>.messages=</b>${jsonToStr(engram.here.messages)}</p>`;
+  logMsg += `  <p class='engramData' style="display:none"><b>.intuition=</b>${jsonToStr(engram.here.intuition)}</p>`;
+  logMsg += `</div>`;
 
   // log directional engrams
   for (const dir in DIRS) {
     if (DIRS[dir] >= DIRS.NORTH && DIRS[dir] <= DIRS.WEST) {
-      logMsg += `<h5>ENGRAM.${dir}</h5>`;
-      logMsg += `<span class='engramData'><b>.see=</b>${jsonToStr(engram[dir.toLowerCase()].see)}</span>`;
-      logMsg += `<span class='engramData'><b>.hear=</b>${jsonToStr(engram[dir.toLowerCase()].hear)}</span>`;
-      logMsg += `<span class='engramData'><b>.smell=</b>${jsonToStr(engram[dir.toLowerCase()].smell)}</span>`;
-      logMsg += `<span class='engramData'><b>.feel=</b>${jsonToStr(engram[dir.toLowerCase()].feel)}</span>`;
-      logMsg += `<span class='engramData'><b>.taste=</b>${jsonToStr(engram[dir.toLowerCase()].taste)}</span>`;
+      logMsg += `<div id="${actId}_${dir}" class="engramContainer" onclick="toggleEngramContent('${actId}_${dir}');">`;
+      logMsg += `  <h5><span id="${actId}_${dir}_icon" class="ui-icon ui-icon-plusthick"></span>ENGRAM.${dir}</h5>`;
+      logMsg += `  <p class='engramData' style="display:none"><b>.see=</b>${jsonToStr(engram[dir.toLowerCase()].see)}</p>`;
+      logMsg += `  <p class='engramData' style="display:none"><b>.hear=</b>${jsonToStr(engram[dir.toLowerCase()].hear)}</p>`;
+      logMsg += `  <p class='engramData' style="display:none"><b>.smell=</b>${jsonToStr(engram[dir.toLowerCase()].smell)}</p>`;
+      logMsg += `  <p class='engramData' style="display:none"><b>.feel=</b>${jsonToStr(engram[dir.toLowerCase()].feel)}</p>`;
+      logMsg += `  <p class='engramData' style="display:none"><b>.taste=</b>${jsonToStr(engram[dir.toLowerCase()].taste)}</p>`;
+      logMsg += `</div>`;
     }
   }
-
   logMsg += '</div>';
 
   // track total move count and score
@@ -517,8 +732,36 @@ function renderAction(result) {
   // log the game results if game has ended
   let textMap;
   if (result.game.score.gameResult !== GAME_RESULTS.IN_PROGRESS) {
-    logMessage('err', 'GAME OVER');
-    scaleMiniMap(skully);
+    let msg = 'GAME OVER';
+
+    switch (result.game.score.gameResult) {
+      case GAME_RESULTS.DEATH_LAVA:
+        msg += ' - You stepped into the lava.';
+        scaleMiniMap(skully);
+        break;
+      case GAME_RESULTS.DEATH_TRAP:
+        msg += ' - You hit a trap.';
+        scaleMiniMap(skully);
+        break;
+      case GAME_RESULTS.OUT_OF_MOVES:
+        msg += ' - You ran out of moves.';
+        scaleMiniMap(skully);
+        break;
+      case GAME_RESULTS.WIN:
+        msg += ' - You won!';
+        scaleMiniMap('{{ CHEESE }}');
+        break;
+      case GAME_RESULTS.WIN_FLAWLESS:
+        msg += ' - You won... FLAWLESS VICTORY!';
+        scaleMiniMap('{{ GOUDA }}');
+        break;
+      default:
+        msg += ' - You lost somehow... gameResult=' + result.game.score.gameResult;
+        scaleMiniMap(skully);
+    }
+    logMessage('err', msg);
+    curGame = {};
+    botCallback = null;
   } else {
     textMap = faceAvatar(action.outcomes[action.outcomes.length - 1], result.playerFacing);
     const mmcPre = $('#miniMapContent > pre');
@@ -530,29 +773,13 @@ function renderAction(result) {
   }
 }
 
-// botId: "A_BOT"
-// gameId: "FORCED_JD_EDITOR_002"
-// gameMode: 2
-// gameState: 1
-// mazeStub: {id: "3:3:1:TinTre_v1.0.0", height: 3, width: 3, challenge: 1, name: "Tiny Trek", …}
-// score:
-// backtrackCount: 0
-// bonusPoints: 0
-// botId: "A_BOT"
-// gameId: "FORCED_JD_EDITOR_002"
-// gameMode: 1
-// gameResult: 1
-// gameRound: 1
-// id: "54ea3f805e6fc4b685d525d54f99c4b0"
-// lastUpdated: 1561762964184
-// mazeId: "3:3:1:TinTre_v1.0.0"
-// moveCount: 1
-// teamId: "JD_A_TEAM_01"
-// trophyStubs: []
-// __proto__: Object
-// teamId: "JD_A_TEAM_01"
-// url: "http://localhost:8080/gameFORCED_JD_EDITOR_002"
-
+/**
+ * Generate and return an HTML element with a ui-icon representation of
+ * the given command.
+ *
+ * @param {*} command
+ * @return {string}
+ */
 function getCommandIcon(command) {
   switch (command) {
     case COMMANDS.NONE:
@@ -585,6 +812,13 @@ function getCommandIcon(command) {
   return '';
 }
 
+/**
+ * Generate and return an HTML element with a ui-icon representation of
+ * the given direction.
+ *
+ * @param {*} direction
+ * @return {string}
+ */
 function getDirectionIcon(direction) {
   switch (direction) {
     case DIRS.NONE:
@@ -605,89 +839,48 @@ function getDirectionIcon(direction) {
   return '';
 }
 
-// validates the syntax of code in the editor
+/**
+ * If there are error markers on the editor, enumerate as HTML log them.
+ *
+ * @return {boolean}
+ */
 function validateSyntax() {
-  let markers = monaco.editor.getModelMarkers();
+  const markers = monaco.editor.getModelMarkers();
 
   if (markers.length > 0) {
-    let msg = '<span style="color:antiquewhite">';
+    let msg = '<span class="botCodeError">';
     for (const marker of markers) {
       msg += `Line <b>${marker.endLineNumber}</b>, Column <b>${marker.endColumn}</b>: ${marker.message}<br>`;
     }
     msg += '</span>';
-    logMessage('wrn', 'Bot Run Aborted - Syntax Error(s) Found', msg);
+    logMessage('err', 'BOT CODE HAS ERRORS', msg);
   }
 
   return markers.length === 0;
 }
 
-// toggles warning queue css classes when sytnax errors exist
+/**
+ * Toggles warning queue css classes when sytnax errors exist
+ *
+ * @param {*} enabled
+ * @return {void}
+ */
 function setWarningCues(enabled) {
   if (enabled) {
     $('#editor').addClass('codeWarnings');
-    // $('#btnStartBot').addClass('btnDisabled');
-    // $('#btnStartBot').removeClass('btnEnabled');
-    // $('#btnStartBot').attr('disabled', true);
-    // $('#btnDebugBot').addClass('btnDisabled');
-    // $('#btnDebugBot').removeClass('btnEnabled');
-    // $('#btnDebugBot').attr('disabled', true);
   } else {
     $('#editor').removeClass('codeWarnings');
-    // $('#btnStartBot').addClass('btnEnabled');
-    // $('#btnStartBot').removeClass('btnDisabled');
-    // $('#btnStartBot').attr('disabled', false);
-    // $('#btnDebugBot').addClass('btnEnabled');
-    // $('#btnDebugBot').removeClass('btnDisabled');
-    // $('#btnDebugBot').attr('disabled', false);
   }
 }
 
+//
 /**
- * Start the bot...
+ * Returns the key name of the given for an iterable
+ *
+ * @param {*} obj
+ * @param {*} val
+ * @return {string}
  */
-function startBot(debug = false) {
-  // validate and report errors - if any are found, do not continue
-  if (!validateSyntax()) {
-    return;
-  }
-
-  let bot = editor.getValue();
-
-  // save any outstanding changes when run
-  if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
-    updateBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val(), editor.getValue());
-  }
-
-  // If debugging, inject a debugger; command at the
-  // start of the script if one isn't already found elsewhere.
-  if (debug && bot.indexOf('debugger;') === -1) {
-    bot = 'debugger;\n' + bot;
-  }
-
-  // if not debugging, strip out all the debugger; instances
-  // before execution
-  if (!debug) {
-    bot = bot.replace(/debugger;/, '');
-  }
-
-  try {
-    console.log('bot go ');
-    eval(bot);
-    console.log('bot no-more-go ');
-  } catch (evalErr) {
-    console.error(evalErr);
-    logMessage('err', `Bot Code Error: ${evalErr.message}`, `${JSON.stringify(evalErr, null, 2)}`);
-  }
-}
-
-/**
- * Stop the bot..
- */
-function stopBot() {
-  console.log('Stopping Bot #...');
-}
-
-// returns the key name of the given for an iterable
 function getObjValName(obj, val) {
   for (const item in obj) {
     if (obj[item] === val) {
@@ -696,9 +889,15 @@ function getObjValName(obj, val) {
   }
 }
 
-// a list of all selected values in a bitwise iterable
+/**
+ * A list of all selected values in a bitwise iterable
+ *
+ * @param {*} obj
+ * @param {*} val
+ * @return {array}
+ */
 function getSelectedValueNames(obj, val) {
-  let vals = [];
+  const vals = [];
   for (const item in obj) {
     if (!!(obj[item] & val)) {
       vals.push(`<b>${item}</b>&nbsp;&nbsp[&nbsp;${obj[item]}&nbsp;]`);
@@ -707,6 +906,11 @@ function getSelectedValueNames(obj, val) {
   return vals.join(', ');
 }
 
+/**
+ * Scale the minimap content to best fit the conteainer size
+ *
+ * @param {*} textRender
+ */
 function scaleMiniMap(textRender = '') {
   const mm = $('#miniMap');
   const mmc = $('#miniMapContent');
@@ -755,7 +959,14 @@ function scaleMiniMap(textRender = '') {
   // console.log('final size: ', mm.width(), mm.height());
 }
 
-// update the avatar icon with a facing direction, if provided
+/**
+ * Update the avatar icon with a facing direction, if provided
+ *
+ * @param {*} textMap
+ * @param {*} dir
+ *
+ * @return {string}
+ */
 function faceAvatar(textMap, dir) {
   if (dir != -1) {
     switch (dir) {
@@ -781,8 +992,14 @@ function faceAvatar(textMap, dir) {
   return textMap;
 }
 
-// Enable chrome's data-loss warning if there are unsaved code changes
+/**
+ * Toggle save/version buttons based on current bot code state
+ *
+ * @param {*} enabled
+ */
 function setSaveButtonStates(enabled) {
+  if (!pageLoadComplete) return;
+
   if (enabled) {
     $('#btnSaveBotCode').attr('disabled', false);
     $('#btnSaveBotCode').removeClass('btnDisabled');
@@ -794,4 +1011,86 @@ function setSaveButtonStates(enabled) {
     $('#btnSaveBotCode').removeClass('btnEnabled');
     $('#btnSaveBotCode').attr('title', '');
   }
+}
+
+/**
+ * Toggles display of an engram Data container
+ *
+ * @param {*} containerId
+ */
+function toggleEngramContent(containerId) {
+  const icon = $(`#${containerId}_icon`);
+  const content = $(`#${containerId} > p`);
+
+  if (content.css('display') !== 'none') {
+    icon.removeClass('ui-icon-minusthick');
+    icon.addClass('ui-icon-plusthick');
+    content.hide();
+  } else {
+    icon.addClass('ui-icon-minusthick');
+    icon.removeClass('ui-icon-plusthick');
+    content.show();
+  }
+}
+
+/**
+ * Sends a command to the MazeMasterJS Game Server
+ *
+ * @param {action} action Actions include a command, a direction, and an optional message.
+ * @param {action} callback The function to call back to with response data.
+ */
+async function SendAction(action) {
+  const method = `SendAction(action)`;
+  console.log(method, action, botCallback);
+
+  if (!action) {
+    const actErr = new Error('Missing Action - You must supply an action object.');
+    logMessage('err', 'Invalid Action', actErr.message);
+    throw actErr;
+  }
+
+  if (!action.command) {
+    const cmdErr = new Error('Missing action.command - Your action must include a command.');
+    logMessage('err', 'Missing action.command', cmdErr.message);
+    throw cmdErr;
+  }
+
+  if (!curGame || !curGame.gameId || curGame.gameId.trim() === '') {
+    const gameIdErr = new Error('Invalid Game - No game is currently in progress.');
+    logMessage('err', 'Invalid Game', gameIdErr.message);
+    throw gameIdErr;
+  } else {
+    action.gameId = curGame.gameId;
+  }
+
+  return await executeAction(action)
+    .then(data => {
+      lastActionResult = data;
+
+      // Stop the chain if EMERGENCY STOP was requested
+      setTimeout(() => {
+        if (EMERGENCY_STOP_BUTTON_PUSHED) {
+          $('#emergencyStopDialog').html(`<img src="images/fail/${Math.floor(Math.random() * FAIL_IMG_COUNT)}.gif" style="width:100%; min-height:100px" />`);
+          $('#emergencyStopDialog').dialog('open');
+          logMessage('err', 'EMERGENCY STOP');
+          return;
+        }
+
+        // Only continue chain if game is still in progress and botCallback is set
+        if (botCallback !== null && data.game.score.gameResult === GAME_RESULTS.IN_PROGRESS) {
+          botCallback(data);
+        } else {
+          console.log('Action Chain cannot continue.', 'gameResult=' + data.game.score.gameResult, 'botCallback=' + botCallback);
+        }
+      }, CALLBACK_DELAY);
+    })
+    .catch(reqError => {
+      if (reqError.status === 404) {
+        logMessage('err', 'Game Not Found', `Game ${curGame.gameId} was not found. Please start a new game and try again.`);
+        throw reqError;
+      } else {
+        console.log('SendAction() -> gameFuncs.executeAction Error: ' + JSON.stringify(reqError));
+        logMessage('err', `ACTION ERROR - ${reqError.message}`, reqError.trace);
+      }
+    });
 }
