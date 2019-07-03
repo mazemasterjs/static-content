@@ -1,11 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
 
     <!-- Fonts  / Icons-->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
@@ -30,11 +26,15 @@
     <script src="js/gameFuncs.js"></script>
     <script src="js/declarations.js"></script>
     <script src="js/skully.js"></script>
+    <script src="js/cheesy.js"></script>
   </head>
 
   <body>
-    <header id="pageTitle">
-      <h2>MazeMasterJS - Bot Editor</h2>
+    <header>
+      <div id="pageHeader">
+        <div class="grid-item">MazeMasterJS</div>
+        <div class="grid-item">Hello</div>
+      </div>
     </header>
 
     <section id="appContainer">
@@ -57,6 +57,9 @@
         </button>
         <button id="btnEmergencyStop" class="btnEmergencyStop" title="Runaway bot? Click here!">
           STOP
+        </button>
+        <button id="btnQuit" class="btnEmergencyStop" title="Quit the current game.">
+          QUIT
         </button>
       </div>
 
@@ -94,6 +97,20 @@
       <p>If there are no <b>debugger;</b> lines in your code, execution will pause on line 1.</p>
     </div>
 
+    <div id="loginDialog" title="Log In" style="display: none">
+      <form>
+        <fieldset>
+          <label for="userName">Name</label>
+          <input type="text" name="userName" id="userName" value="Jane Smith" class="text ui-widget-content ui-corner-all" />
+          <label for="password">Password</label>
+          <input type="password" name="password" id="password" value="xxxxxxx" class="text ui-widget-content ui-corner-all" />
+
+          <!-- Allow form submission with keyboard without duplicating the dialog button -->
+          <input type="submit" tabindex="-1" style="position:absolute; top:-1000px" />
+        </fieldset>
+      </form>
+    </div>
+
     <div id="emergencyStopDialog" title="EMERGENCY STOP"></div>
 
     <!-- Load the Monaco Editor -->
@@ -110,12 +127,12 @@
       /* CONFIGURE MONACO */
       const startingScript = "logMessage('bot', 'I am<b>&nbsp;alive!</b>', 'Shall we play a<b>&nbsp;game?</b>');";
 
+      let model = monaco.editor.createModel(startingScript, 'javascript');
+
       // prettier-ignore
       monaco.languages.typescript.javascriptDefaults.addExtraLib(
-        MMJS_EDITOR_LIB,
-    );
-
-      let model = monaco.editor.createModel(startingScript, 'javascript');
+          MMJS_EDITOR_LIB,
+      );
 
       // themes: vs | vs-dark | hc-black
       const editor = monaco.editor.create(document.getElementById('editor'), {
@@ -139,13 +156,14 @@
           const mm = $('#miniMap');
 
           if ($('#miniMapContent').css('display') === 'none') {
-            mm.css('min-height', 'var(--miniMapBaseSize)');
             $('#miniMapContent').show();
             mm.resizable('enable');
-            scaleMiniMap();
+            // scaleMiniMap();
           } else {
             mm.css('min-height', '0');
             mm.height($('#miniMap > h3').height());
+            $('#miniMap').css('height', 'var(--miniMapBaseSize)rem');
+            $('#miniMap').css('width', 'var(--miniMapBaseSize)rem');
             $('#miniMapContent').hide();
             mm.resizable('disable');
           }
@@ -174,6 +192,10 @@
           EMERGENCY_STOP_BUTTON_PUSHED = true;
         });
 
+        $('#btnQuit').click(() => {
+          quitGame();
+        });
+
         $('#selTeam').change(() => {
           resetTrackingVars();
           loadBots($('#selTeam :selected').val());
@@ -191,6 +213,14 @@
 
         // set up the debug warning dialog
         $('#debugDialog').dialog({
+          width: '40vw',
+          autoOpen: false,
+          modal: false,
+          closeText: '',
+        });
+
+        // set up the login dialog box
+        $('#loginDialog').dialog({
           width: '40vw',
           autoOpen: false,
           modal: false,
@@ -284,6 +314,11 @@
             console.log('load controls error: ' + err.message);
           });
       });
+
+      // keep textLog always scrolled to the bottom
+      const textLog = document.querySelector('#textLog');
+      const textLogObsvr = new MutationObserver(scrollToBottom);
+      textLogObsvr.observe(textLog, { childList: true });
     </script>
   </body>
 </html>

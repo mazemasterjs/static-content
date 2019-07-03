@@ -81,6 +81,7 @@ const COMMANDS = {
   WAIT: 10,
   WRITE: 11,
   QUIT: 12,
+  SNEAK: 13,
 };
 
 const GAME_RESULTS = {
