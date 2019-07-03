@@ -1,8 +1,8 @@
 /* eslint-disable no-unused-vars */
 
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
-// const GAME_URL = 'http://mazemasterjs.com/game';
-const GAME_URL = 'http://localhost:8080/game';
+const GAME_URL = 'http://mazemasterjs.com/game';
+// const GAME_URL = 'http://localhost:8080/game';
 // const TEAM_URL = 'http://localhost:8083/api/team';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
 const USER_CREDS = 'a3JlZWJvZzoxc3VwZXIx'; // TODO: Replace myCreds with a login and use btoa(userName + ':' + password) to send the Basic Auth header
