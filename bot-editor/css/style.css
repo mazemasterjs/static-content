@@ -5,10 +5,12 @@
   font-size: 16px;
 }
 
-/* @font-face {
-  font-family: Gentium;
-  src: url('Gentium.ttf');
-} */
+#pageHeader {
+  display: grid;
+  grid-template-columns: 6fr 1fr;
+  grid-template-rows: 5vh;
+  border: solid 1px red;
+}
 
 body {
   background-color: rgb(0, 0, 0);
@@ -98,7 +100,7 @@ pre {
   background-color: hsla(34, 14%, 52%, 0.2);
 }
 
-#btnEmergencyStop {
+.btnEmergencyStop {
   font-size: 0.9rem;
   font-weight: bold;
   border: 1px dashed yellow;
@@ -110,13 +112,29 @@ pre {
   background-image: linear-gradient(to bottom, rgb(214, 0, 0), rgb(97, 18, 18));
 }
 
-#btnEmergencyStop:hover {
+.btnEmergencyStop:hover {
   text-shadow: 1px 1px -1px -1px rgba(0, 0, 0, 0.5);
   background-image: linear-gradient(to bottom, rgb(97, 18, 18), rgb(214, 0, 0));
 }
 
+#emergencyStopDialog {
+  text-align: center;
+  height: 100%;
+  width: 100%;
+}
+
+#emergencyStopDialog img {
+  height: 100%;
+  width: 100%;
+}
+
 .codeWarnings {
   border: solid 1px firebrick !important;
+}
+
+#output {
+  min-width: 320px;
+  max-width: 640px;
 }
 
 #textLog {
@@ -226,6 +244,17 @@ pre {
   font-size: 0.85rem;
 }
 
+.logBdy .gameOverImgContainer {
+  margin: 0.5rem 0.75rem 0.5rem 0.5rem;
+  text-align: center;
+}
+
+.gameOverImgContainer img {
+  max-width: 320px;
+  border: darkgreen;
+  box-shadow: darkgreen 0px 0px 4px;
+}
+
 .logBdy pre {
   overflow-x: auto;
   white-space: pre-wrap;
@@ -303,6 +332,16 @@ pre {
   color: lightskyblue;
 }
 
+.winMsgHdr {
+  color: rgb(0, 255, 0);
+  border-top: solid 1px forestgreen;
+  border-bottom: solid 1px green;
+  background-color: rgba(18, 75, 18, 0.3);
+}
+.winMsgBdy {
+  color: red;
+}
+
 .wrnMsgHdr {
   color: darkorange;
   border-top: solid 1px orange;
@@ -344,6 +383,7 @@ pre {
 }
 
 #editor {
+  min-width: 640px;
   overflow: hidden;
 }
 
@@ -351,7 +391,7 @@ pre {
   display: grid;
   margin: none;
   grid-column-gap: 0.5rem;
-  grid-template-columns: 60vw 36vw;
+  grid-template-columns: 8fr 3fr;
   grid-template-rows: 75vh;
 }
 

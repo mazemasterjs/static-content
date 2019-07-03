@@ -4,9 +4,8 @@ declarations.push('/**');
 declarations.push(' * Sends a command to the MazeMasterJS Game Server');
 declarations.push(' *');
 declarations.push(' * @param {action} action Actions include: command, direction, and (optional) message.');
-declarations.push(
-  ' * @param {callback} callback The function return a server response to, usually solveMaze. If no callback is provided, your bot will not receive result data from the action you sent.',
-);
+declarations.push(' * @param {callback} callback The function return a server response to, usually solveMaze. ');
+declarations.push(' *         If no callback is provided, your bot will not receive result data from the action you sent.');
 declarations.push(' */');
 declarations.push('declare function SendAction(action: any, callback?: any): void');
 
@@ -53,6 +52,16 @@ declarations.push('};');
 // add a couple of aliases for common enums
 declarations.push('declare const DIRS = DIRECTIONS;');
 declarations.push('declare const CMDS = COMMANDS;');
+
+// and some stuff related to BOT_RAM
+declarations.push('declare const BOT_RAM: any;');
+
+declarations.push('/**');
+declarations.push(' * Returns the number of object keys in BOT_RAM');
+declarations.push(' * ');
+declarations.push(' * @return {number} The number of object keys found in BOT_RAM');
+declarations.push(' */');
+declarations.push('declare function getBotRamLength(): number');
 
 // eslint-disable-next-line no-unused-vars
 const MMJS_EDITOR_LIB = declarations.join('\n');

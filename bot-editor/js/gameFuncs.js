@@ -1,29 +1,37 @@
 /* eslint-disable no-unused-vars */
-const CALLBACK_DELAY = 50;
-const FAIL_IMG_COUNT = 31;
-const SUCC_IMG_COUNT = 32;
-const AJAX_TIMEOUT = 5000;
 
-// eslint-disable-next-line prefer-const
-let EMERGENCY_STOP_BUTTON_PUSHED = false;
-
-// eslint-disable-next-line prefer-const
-let botCallback = null;
-let lastActionResult = null;
-
-// TODO: Replace myCreds with a login and use btoa(userName + ':' + password) to send the Basic Auth header
-const myCreds = 'a3JlZWJvZzoxc3VwZXIx';
-
-const GAME_URL = 'http://mazemasterjs.com/game';
-// const GAME_URL = 'http://localhost:8080/game';
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
-const TEAM_URL = 'http://mazemasterjs.com/api/team';
+// const GAME_URL = 'http://mazemasterjs.com/game';
+const GAME_URL = 'http://localhost:8080/game';
 // const TEAM_URL = 'http://localhost:8083/api/team';
+const TEAM_URL = 'http://mazemasterjs.com/api/team';
+const USER_CREDS = 'a3JlZWJvZzoxc3VwZXIx'; // TODO: Replace myCreds with a login and use btoa(userName + ':' + password) to send the Basic Auth header
 
-// Game tracking variables
-let curGame = {};
-let totalMoves = 0;
-let totalScore = 1000;
+const CALLBACK_DELAY = 0;
+const FAIL_IMG_COUNT = 30;
+const SUCC_IMG_COUNT = 31;
+const AJAX_TIMEOUT = 5000;
+const TEXTLOG_MAX_CHILDREN = 250;
+
+// eslint-disable-next-line prefer-const
+let EMERGENCY_STOP_BUTTON_PUSHED = false; // set to true from index.html on STOP button press
+
+// Game & Bot global tracking variables
+let botCallback = null; // allows step/loop/debug modes to behave differently
+let lastActionResult = null; // stores the last action result returned from the game server
+let curGame = {}; // stores the current game data in memory, referenced by send/execute action
+let totalMoves = 0; // track the total move count (accumulated via action/result moveCount )
+let totalScore = 1000; // tracks total score (accumulated via action/result score)
+let BOT_RAM = {}; // used to persist bot-data (memory) while step-running a bot
+
+/**
+ * Returns the number of object keys in BOT_RAM
+ *
+ * @return {number} The number of object keys found in BOT_RAM
+ */
+const getBotRamLength = () => {
+  return Object.keys(BOT_RAM).length;
+};
 
 /**
  * Stringify and formaat return json string for cleaner action/engram rendering
@@ -55,10 +63,19 @@ async function loadControls() {
 }
 
 /**
+ * Scroll to the bottom of the textLog window
+ */
+function scrollToBottom() {
+  $('#textLog').scrollTop($('#textLog')[0].scrollHeight);
+}
+
+/**
  * Resets global tracking variables
  */
-function resetTrackingVars() {
+function resetGlobals() {
   curGame = {};
+  BOT_RAM = {};
+  botCallback = null;
   totalMoves = 0;
   totalScore = 1000;
 }
@@ -75,7 +92,7 @@ function loadMazes() {
     url: MAZE_GET_URL,
     dataType: 'json',
     method: 'GET',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     success: function(mazes) {
       $('#selMaze').empty();
       for (const maze of mazes) {
@@ -86,7 +103,7 @@ function loadMazes() {
       }
       return Promise.resolve();
     },
-    error: function(mazeLoadErr) {
+    error: function (mazeLoadErr) {
       logMessage('err', 'ERROR LOADING MAZES', mazeLoadErr !== undefined ? `${mazeLoadErr.status} - ${mazeLoadErr.statusText}` : undefined);
     },
   });
@@ -104,7 +121,7 @@ function loadTeams() {
     url: TEAM_GET_URL,
     dataType: 'json',
     method: 'GET',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     success: function(teams) {
       $('#selTeam').empty();
       for (const team of teams) {
@@ -115,7 +132,7 @@ function loadTeams() {
       }
       return Promise.resolve();
     },
-    error: function(error) {
+    error: function (error) {
       logMessage('err', 'ERROR LOADING TEAMS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
     },
   });
@@ -134,7 +151,7 @@ async function loadBots(teamId) {
     url: BOT_GET_URL,
     dataType: 'json',
     method: 'GET',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     success: function(data) {
       const team = data[0];
       $('#selBot').empty();
@@ -149,7 +166,7 @@ async function loadBots(teamId) {
       debugBotSel += '</option>';
       $('#selBot').append(debugBotSel);
     },
-    error: function(error) {
+    error: function (error) {
       logMessage('err', 'ERROR LOADING BOTS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
     },
   }).done(() => {
@@ -171,7 +188,7 @@ function loadBotVersions(botId, autoLoadBot = true) {
     url: BOT_CODE_URL,
     dataType: 'json',
     method: 'GET',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     success: function(docs) {
       $('#selBotVersion').empty();
       let versionCount = 0;
@@ -184,7 +201,7 @@ function loadBotVersions(botId, autoLoadBot = true) {
         }
       }
     },
-    error: function(error) {
+    error: function (error) {
       if (err.status === 404) {
         versionBotCode(botId, editor.getValue());
       } else {
@@ -210,11 +227,11 @@ function deleteBotCodeVersion(botId, version) {
     url: DELETE_BOT_CODE_URL,
     dataType: 'json',
     method: 'DELETE',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     success: function() {
       logMessage('wrn', `BOT CODE v${version} DELETED`);
     },
-    error: function(error) {
+    error: function (error) {
       logMessage('err', `ERROR DELETING BOT CODE v${version}`, error.message === undefined ? `${error.status} - ${error.statusText}` : error.message);
     },
   });
@@ -244,7 +261,7 @@ function loadBotCode(botId, version) {
     url: BOT_CODE_URL,
     dataType: 'json',
     method: 'GET',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     success: function(docs) {
       // if no version given, find the higest version returned
       if (version === -1) {
@@ -279,7 +296,7 @@ function loadBotCode(botId, version) {
         logMessage('wrn', 'BOT CODE NOT FOUND');
       }
     },
-    error: function(error) {
+    error: function (error) {
       logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${err.status} (${err.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}.</b>`);
     },
   });
@@ -305,17 +322,17 @@ function updateBotCode(botId, version, code) {
     dataType: 'json',
     timeout: AJAX_TIMEOUT,
     method: 'PUT',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     data: {
       botId: botId,
       version: version,
       code,
     },
-    success: function() {
+    success: function () {
       logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${version}</b>&nbsp;- Updated.`);
       setSaveButtonStates(false);
     },
-    error: function(error) {
+    error: function (error) {
       logMessage('err', 'ERROR UPDATING BOT CODE', `${error.status} - ${error.statusText}`);
     },
   }).done(() => {
@@ -363,7 +380,7 @@ function versionBotCode(botId, code) {
     dataType: 'json',
     timeout: AJAX_TIMEOUT,
     method: 'GET',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     success: function(docs) {
       topVersion = docs.sort((first, second) => {
         return parseInt(second.version.replace(/\./g, '')) - parseInt(first.version.replace(/\./g, ''));
@@ -377,17 +394,17 @@ function versionBotCode(botId, code) {
         dataType: 'json',
         timeout: AJAX_TIMEOUT,
         method: 'PUT',
-        headers: { Authorization: 'Basic ' + myCreds },
+        headers: { Authorization: 'Basic ' + USER_CREDS },
         data: {
           botId: botId,
           version: newVersion,
           code,
         },
-        success: function() {
+        success: function () {
           logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${newVersion}</b>&nbsp;- New Version Saved.`);
           setSaveButtonStates(false);
         },
-        error: function(error) {
+        error: function (error) {
           if (error.status !== 404) {
             logMessage('err', 'ERROR SAVING BOT', `${error.status} - ${error.statusText}`);
           } else {
@@ -398,25 +415,25 @@ function versionBotCode(botId, code) {
         loadBotVersions(botId, false);
       });
     },
-    error: function(error) {
+    error: function (error) {
       $.ajax({
         url: PUT_BOT_CODE_URL,
         dataType: 'json',
         timeout: AJAX_TIMEOUT,
         method: 'PUT',
-        headers: { Authorization: 'Basic ' + myCreds },
+        headers: { Authorization: 'Basic ' + USER_CREDS },
         data: {
           botId: botId,
           version: '0.0.1',
           code,
         },
-        success: function() {
+        success: function () {
           logMessage('bot', `${$('selBot').name()}&nbsp;<b>v0.0.1</b>&nbsp;Activated!`);
           if ($('#selBotVersion').children().length === 0) {
             $('#selBotVersion').append(`<option value="${botId}">0.0.1</option>`);
           }
         },
-        error: function(error) {
+        error: function (error) {
           logMessage('err', 'ERROR INITIALIZING BOT', `${error.status} - ${error.statusText} initializing bot&nbsp;<b>${botId}</span>`);
         },
       });
@@ -441,7 +458,7 @@ function logMessage(source, header, message) {
   let htmlOut = `<h3 class="${hdr}">${header}</h3>`;
 
   if (message !== undefined) {
-    if ((source = 'err')) {
+    if (source === 'err') {
       htmlOut += `<div class="${bdy}"><pre class='autoScroll'>${message}</pre></div>`;
     } else {
       htmlOut += `<div class="${bdy}">${message}</div>`;
@@ -453,7 +470,15 @@ function logMessage(source, header, message) {
   // added it to the log and update display
   textLog.append(htmlOut);
 
-  textLog.scrollTop(textLog[0].scrollHeight);
+  // prune the text log from the top down to avoid choking the browser to death
+  while (textLog[0].children.length > TEXTLOG_MAX_CHILDREN) {
+    textLog[0].children[0].remove();
+
+    // don't leave a content section stranded
+    if (textLog[0].children.length > 0 && textLog[0].children[0].tagName !== 'H3') {
+      textLog[0].children[0].remove();
+    }
+  }
 }
 
 /**
@@ -472,11 +497,12 @@ async function startGame() {
     dataType: 'json',
     timeout: AJAX_TIMEOUT,
     method: 'PUT', // method is any HTTP method
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     data: {}, // data as js object
-    success: function(data) {
+    success: function (data) {
       $('#textLog').empty();
       $('#actionLog').empty();
+      resetGlobals();
 
       // set tracking vars to new game values
       curGame = data.game;
@@ -495,7 +521,7 @@ async function startGame() {
 
       return Promise.resolve(data.game);
     },
-    error: async function(err) {
+    error: async function (err) {
       if (err.responseJSON !== undefined) {
         const res = err.responseJSON;
         if (res.status === 400 && res.gameId !== undefined) {
@@ -526,9 +552,10 @@ async function loadGame(gameId) {
     dataType: 'json',
     timeout: AJAX_TIMEOUT,
     method: 'GET', // method is any HTTP method
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     data: {}, // data as js object
     success: function(data) {
+      resetGlobals();
       curGame = data.game;
       totalScore = data.totalScore;
       totalMoves = data.game.score.moveCount;
@@ -543,11 +570,38 @@ async function loadGame(gameId) {
 
       return Promise.resolve(data.game);
     },
-    error: async function(err) {
-      console.error('loadGame', err);
-      logMessage('err', 'ERROR LOADING GAME', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
-      return Promise.reject(err);
+    error: async function(loadError) {
+      console.error('loadGame', loadError);
+      logMessage('err', 'ERROR LOADING GAME', loadError.status !== 0 ? `${loadError.status} - ${loadError.statusText}` : undefined);
+      return Promise.reject(loadError);
     },
+  });
+}
+
+/**
+ * Attempts to quit the current game in progress
+ *
+ * @param {*} gameId
+ */
+async function quitGame() {
+  const QUIT_GAME_URL = GAME_URL + `/abandon/${curGame.gameId}`;
+  console.log('quitGame', QUIT_GAME_URL);
+
+  await $.ajax({
+    url: QUIT_GAME_URL,
+    dataType: 'json',
+    timeout: AJAX_TIMEOUT,
+    method: 'DELETE', // method is any HTTP method
+    headers: { Authorization: 'Basic ' + USER_CREDS },
+    success: function(data) {
+      resetGlobals();
+      $('#textLog').empty();
+      $('#actionLog').empty();
+      $('#miniMapContent').empty();
+    },
+  }).catch(quitError => {
+    console.error('quitGame', quitError);
+    logMessage('err', 'ERROR QUITTING GAME', quitError.status !== 0 ? `${quitError.status} - ${quitError.statusText}` : undefined);
   });
 }
 
@@ -560,7 +614,7 @@ async function loadGame(gameId) {
  *
  */
 async function startBot(singleStep = true, debug = false) {
-  console.log('startBot', singleStep, debug);
+  console.log('startBot', `singleStep=${singleStep}`, `debug=${debug}`);
   const injectionTag = '\n// @INJECTED_CODE\n';
   const debugStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
   const stepStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
@@ -621,12 +675,16 @@ async function startBot(singleStep = true, debug = false) {
   }
 
   // inject script values appropriate to the run time selected
-  if (debug && botCode.indexOf('debugger;') === -1) {
-    const insKey = 'function goBot(data) {';
-    const insAt = botCode.indexOf(insKey);
-    const bcTop = botCode.substr(0, insAt + insKey.length);
-    const bcBot = botCode.substr(insAt + insKey.length);
-    botCode = bcTop + debugScript + bcBot + debugStart;
+  if (debug) {
+    if (botCode.indexOf('debugger;') === -1) {
+      const insKey = 'function goBot(data) {';
+      const insAt = botCode.indexOf(insKey);
+      const bcTop = botCode.substr(0, insAt + insKey.length);
+      const bcBot = botCode.substr(insAt + insKey.length);
+      botCode = bcTop + debugScript + bcBot + debugStart;
+    } else {
+      botCode = botCode + debugStart;
+    }
   } else if (singleStep) {
     botCode = botCode.replace(/debugger;/g, '');
     botCode = botCode + stepStart;
@@ -653,7 +711,7 @@ async function executeAction(action) {
     url: GAME_ACTION_URL,
     method: 'PUT',
     dataType: 'json',
-    headers: { Authorization: 'Basic ' + myCreds },
+    headers: { Authorization: 'Basic ' + USER_CREDS },
     data: action,
   })
     .then(data => {
@@ -732,36 +790,56 @@ function renderAction(result) {
   // log the game results if game has ended
   let textMap;
   if (result.game.score.gameResult !== GAME_RESULTS.IN_PROGRESS) {
+    let win = false;
     let msg = 'GAME OVER';
 
+    // reset globals - game is over
+    resetGlobals();
+
+    // present game over cues
     switch (result.game.score.gameResult) {
       case GAME_RESULTS.DEATH_LAVA:
         msg += ' - You stepped into the lava.';
-        scaleMiniMap(skully);
+        logMessage('err', msg, getEndGameImg(false));
         break;
       case GAME_RESULTS.DEATH_TRAP:
         msg += ' - You hit a trap.';
-        scaleMiniMap(skully);
+        logMessage('err', msg, getEndGameImg(false));
         break;
       case GAME_RESULTS.OUT_OF_MOVES:
         msg += ' - You ran out of moves.';
-        scaleMiniMap(skully);
+        logMessage('err', msg, getEndGameImg(false));
         break;
       case GAME_RESULTS.WIN:
+        win = true;
         msg += ' - You won!';
-        scaleMiniMap('{{ CHEESE }}');
+        logMessage('win', msg, getEndGameImg(true));
         break;
       case GAME_RESULTS.WIN_FLAWLESS:
+        win = true;
         msg += ' - You won... FLAWLESS VICTORY!';
-        scaleMiniMap('{{ GOUDA }}');
+        logMessage('win', msg, getEndGameImg(true));
         break;
       default:
         msg += ' - You lost somehow... gameResult=' + result.game.score.gameResult;
-        scaleMiniMap(skully);
+        logMessage('err', msg, getEndGameImg(false));
     }
-    logMessage('err', msg);
-    curGame = {};
-    botCallback = null;
+
+    if ($('#miniMapContent').css('display') !== 'none') {
+      // set a nifty ascii on the minimap
+      if (win) {
+        scaleMiniMap(cheesy);
+      } else {
+        scaleMiniMap(skully);
+      }
+
+      // toggle hide/show to reset map dimensions
+      $('#miniMapContent').hide();
+      $(':root').css('--miniMapFontSize', '0.4rem');
+      $('#miniMap').css('height', 'var(--miniMapBaseSize)rem');
+      $('#miniMap').css('width', 'var(--miniMapBaseSize)rem');
+      $('#miniMapContent').show();
+    }
   } else {
     textMap = faceAvatar(action.outcomes[action.outcomes.length - 1], result.playerFacing);
     const mmcPre = $('#miniMapContent > pre');
@@ -770,6 +848,22 @@ function renderAction(result) {
     } else {
       mmcPre.text(textMap);
     }
+  }
+}
+
+/**
+ * Randomly selectes an image from the images/success folder
+ *
+ * @param {boolean} win
+ * @return {string}
+ */
+function getEndGameImg(win) {
+  const maxImgNum = win ? SUCC_IMG_COUNT : FAIL_IMG_COUNT;
+  const imgNum = Math.floor(Math.random() * maxImgNum);
+  if (win) {
+    return `<div class='gameOverImgContainer'><img class='gameOverImg' src='images/success/${imgNum}.gif' onload='scrollToBottom();' /></div>`;
+  } else {
+    return `<div class='gameOverImgContainer'><img class='gameOverImg' src='images/fail/${imgNum}.gif' onload='scrollToBottom();' /></div>`;
   }
 }
 
@@ -1070,7 +1164,7 @@ async function SendAction(action) {
       // Stop the chain if EMERGENCY STOP was requested
       setTimeout(() => {
         if (EMERGENCY_STOP_BUTTON_PUSHED) {
-          $('#emergencyStopDialog').html(`<img src="images/fail/${Math.floor(Math.random() * FAIL_IMG_COUNT)}.gif" style="width:100%; min-height:100px" />`);
+          $('#emergencyStopDialog').html(getEndGameImg());
           $('#emergencyStopDialog').dialog('open');
           logMessage('err', 'EMERGENCY STOP');
           return;
@@ -1086,7 +1180,8 @@ async function SendAction(action) {
     })
     .catch(reqError => {
       if (reqError.status === 404) {
-        logMessage('err', 'Game Not Found', `Game ${curGame.gameId} was not found. Please start a new game and try again.`);
+        logMessage('err', 'Game Not Found', `Game ${curGame.gameId} was not found. Please try again.`);
+        resetGlobals();
         throw reqError;
       } else {
         console.log('SendAction() -> gameFuncs.executeAction Error: ' + JSON.stringify(reqError));
