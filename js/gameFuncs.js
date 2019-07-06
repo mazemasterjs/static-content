@@ -1,6 +1,9 @@
+'use strict';
+
 /* eslint-disable no-unused-vars */
 
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
+// const GAME_URL = 'http://game-server-maze-master-js.b9ad.pro-us-east-1.openshiftapps.com/game';
 const GAME_URL = 'http://mazemasterjs.com/game';
 // const GAME_URL = 'http://localhost:8080/game';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
@@ -11,6 +14,7 @@ const FAIL_IMG_COUNT = 30;
 const SUCC_IMG_COUNT = 31;
 const AJAX_TIMEOUT = 5000;
 const TEXTLOG_MAX_CHILDREN = 250;
+const DBG = false;
 
 // eslint-disable-next-line prefer-const
 let EMERGENCY_STOP_BUTTON_PUSHED = false; // set to true from index.html on STOP button press
@@ -48,11 +52,14 @@ const jsonToStr = obj => {
  * @return {Promise}
  */
 async function loadControls() {
-  console.log('loadControls -> mazes');
+  if (DBG) console.log('loadControls -> mazes');
+  $('#loadMsgBody').text('... fetching maze data');
   return loadMazes().then(() => {
-    console.log(' loadControls -> teams');
+    if (DBG) console.log(' loadControls -> teams');
+    $('#loadMsgBody').text('... fetching team data');
     return loadTeams().then(() => {
-      console.log('  loadControls -> bots');
+      if (DBG) console.log('  loadControls -> bots');
+      $('#loadMsgBody').text('... loading bots for team ' + $('#selTeam :selected').val());
       return loadBots($('#selTeam :selected').val()).then(() => {
         console.log('loadControls -> Promise chain complete.');
         logMessage('log', 'READY TO&nbsp;<b>ROCK!</b>', 'The bot editor is ready.');
@@ -85,14 +92,17 @@ function resetGlobals() {
  */
 function loadMazes() {
   const MAZE_GET_URL = `${MAZE_URL}/get`;
-  console.log(' -> loadMazes -> ', MAZE_GET_URL);
+  if (DBG) {
+    console.log(' -> loadMazes -> ', MAZE_GET_URL);
+  }
 
   return $.ajax({
     url: MAZE_GET_URL,
     dataType: 'json',
     method: 'GET',
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    success: function(mazes) {
+  })
+    .then(mazes => {
       $('#selMaze').empty();
       for (const maze of mazes) {
         let opt = "<option value='" + maze.id + "'>";
@@ -101,11 +111,10 @@ function loadMazes() {
         $('#selMaze').append(opt);
       }
       return Promise.resolve();
-    },
-    error: function(mazeLoadErr) {
+    })
+    .catch(mazeLoadErr => {
       logMessage('err', 'ERROR LOADING MAZES', mazeLoadErr !== undefined ? `${mazeLoadErr.status} - ${mazeLoadErr.statusText}` : undefined);
-    },
-  });
+    });
 }
 
 /**
@@ -115,13 +124,16 @@ function loadMazes() {
  */
 function loadTeams() {
   const TEAM_GET_URL = `${TEAM_URL}/get`;
-  console.log('  -> loadTeams -> ', TEAM_GET_URL);
+  if (DBG) {
+    console.log('  -> loadTeams -> ', TEAM_GET_URL);
+  }
   return $.ajax({
     url: TEAM_GET_URL,
     dataType: 'json',
     method: 'GET',
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    success: function(teams) {
+  })
+    .then(teams => {
       $('#selTeam').empty();
       for (const team of teams) {
         let opt = "<option value='" + team.id + "'>";
@@ -130,11 +142,10 @@ function loadTeams() {
         $('#selTeam').append(opt);
       }
       return Promise.resolve();
-    },
-    error: function(error) {
+    })
+    .catch(error => {
       logMessage('err', 'ERROR LOADING TEAMS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
-    },
-  });
+    });
 }
 
 /**
@@ -143,7 +154,9 @@ function loadTeams() {
  */
 async function loadBots(teamId) {
   const BOT_GET_URL = `${TEAM_URL}/get?id=${teamId}`;
-  console.log('   -> loadBots -> ', teamId, BOT_GET_URL);
+  if (DBG) {
+    console.log('   -> loadBots -> ', teamId, BOT_GET_URL);
+  }
   if (!teamId) return;
 
   return $.ajax({
@@ -151,21 +164,21 @@ async function loadBots(teamId) {
     dataType: 'json',
     method: 'GET',
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    success: function(data) {
+  })
+    .then(data => {
       const team = data[0];
       $('#selBot').empty();
-
       for (const bot of team.bots) {
         const botSel = `<option value='${bot.id}' name='${bot.name}'>${bot.name} (${bot.coder})</option>`;
         $('#selBot').append(botSel);
       }
-    },
-    error: function(error) {
+    })
+    .catch(error => {
       logMessage('err', 'ERROR LOADING BOTS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
-    },
-  }).done(() => {
-    loadBotVersions($('#selBot :selected').val());
-  });
+    })
+    .done(() => {
+      loadBotVersions($('#selBot :selected').val());
+    });
 }
 
 /**
@@ -175,15 +188,20 @@ async function loadBots(teamId) {
  * @return {void}
  */
 function loadBotVersions(botId, autoLoadBot = true) {
+  $('#loadMsgBody').text('... collecting versions of ' + $('#selBot :selected').val());
+
   const BOT_CODE_URL = TEAM_URL + '/get/botCode?botId=' + botId;
-  console.log('    -> loadBotVersions ->', botId);
+  if (DBG) {
+    console.log('    -> loadBotVersions ->', botId);
+  }
 
   return $.ajax({
     url: BOT_CODE_URL,
     dataType: 'json',
     method: 'GET',
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    success: function(docs) {
+  })
+    .then(docs => {
       $('#selBotVersion').empty();
       let versionCount = 0;
       for (const doc of docs.reverse()) {
@@ -194,19 +212,19 @@ function loadBotVersions(botId, autoLoadBot = true) {
           $('#selBotVersion').append(`<option value="${doc.version}">${doc.version}</option>`);
         }
       }
-    },
-    error: function(lbvError) {
+    })
+    .catch(lbvError => {
       if (lbvError.status === 404) {
         versionBotCode(botId, editor.getValue());
       } else {
         logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${lbvError.status} (${lbvError.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}</b>.`);
       }
-    },
-  }).done(() => {
-    if (autoLoadBot) {
-      loadBotCode($('#selBot :selected').val());
-    }
-  });
+    })
+    .done(() => {
+      if (autoLoadBot) {
+        loadBotCode($('#selBot :selected').val());
+      }
+    });
 }
 
 /**
@@ -222,13 +240,13 @@ function deleteBotCodeVersion(botId, version) {
     dataType: 'json',
     method: 'DELETE',
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    success: function() {
+  })
+    .then(() => {
       logMessage('wrn', `BOT CODE v${version} DELETED`);
-    },
-    error: function(error) {
+    })
+    .catch(error => {
       logMessage('err', `ERROR DELETING BOT CODE v${version}`, error.message === undefined ? `${error.status} - ${error.statusText}` : error.message);
-    },
-  });
+    });
 }
 
 /**
@@ -249,20 +267,23 @@ function loadBotCode(botId, version) {
     BOT_CODE_URL += `&version=${version}`;
   }
 
-  console.log('loadBotCode', botId, version, BOT_CODE_URL);
+  if (DBG) console.log('loadBotCode', botId, version, BOT_CODE_URL);
 
   return $.ajax({
     url: BOT_CODE_URL,
     dataType: 'json',
     method: 'GET',
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    success: function(docs) {
+  })
+    .then(docs => {
       // if no version given, find the higest version returned
       if (version === -1) {
         version = docs.sort((first, second) => {
           return parseInt(second.version.replace(/\./g, '')) - parseInt(first.version.replace(/\./g, ''));
         })[0].version;
       }
+
+      $('#loadMsgBody').text(`... loading ${$('#selBot :selected').val()} v${version}`);
 
       // now load the version
       const botCode = docs.find(doc => {
@@ -280,24 +301,29 @@ function loadBotCode(botId, version) {
         );
 
         // load the code into the editor
+        $('#loadMsgBody').text(`... gently placing ${$('#selBot :selected').val()} v${version} into the editor`);
         editor.setValue(botCode.code);
 
         // and format the code once that's done
+        $('#loadMsgBody').text(`... violently formatting ${$('#selBot :selected').val()} v${version}'s syntax`);
         editor.trigger('', 'editor.action.formatDocument');
 
         setSaveButtonStates(false);
+        setBotButtonStates(true);
       } else {
         logMessage('wrn', 'BOT CODE NOT FOUND');
       }
-    },
-    error: function(codeLoadError) {
+
+      $('#loadMsgBody').text(`...finally done with all this prep. LET'S CODE!`);
+      $('#loadingDialog').dialog('close');
+    })
+    .catch(codeLoadError => {
       logMessage(
         'err',
         `ERROR LOADING BOT CODE &rsaquo; ${codeLoadError.status} (${codeLoadError.statusText})`,
         `Cannot load code for bot&nbsp;<b>${botId}.</b>`,
       );
-    },
-  });
+    });
 }
 
 /**
@@ -326,16 +352,17 @@ function updateBotCode(botId, version, code) {
       version: version,
       code,
     },
-    success: function() {
+  })
+    .then(() => {
       logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${version}</b>&nbsp;- Updated.`);
       setSaveButtonStates(false);
-    },
-    error: function(error) {
+    })
+    .catch(error => {
       logMessage('err', 'ERROR UPDATING BOT CODE', `${error.status} - ${error.statusText}`);
-    },
-  }).done(() => {
-    loadBotVersions(botId, false);
-  });
+    })
+    .done(() => {
+      loadBotVersions(botId, false);
+    });
 }
 
 /**
@@ -379,8 +406,9 @@ function versionBotCode(botId, code) {
     timeout: AJAX_TIMEOUT,
     method: 'GET',
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    success: function(docs) {
-      topVersion = docs.sort((first, second) => {
+  })
+    .then(docs => {
+      const topVersion = docs.sort((first, second) => {
         return parseInt(second.version.replace(/\./g, '')) - parseInt(first.version.replace(/\./g, ''));
       })[0].version;
 
@@ -397,20 +425,21 @@ function versionBotCode(botId, code) {
           version: newVersion,
           code,
         },
-        success: function() {
+      })
+        .then(() => {
           logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${newVersion}</b>&nbsp;- New Version Saved.`);
           setSaveButtonStates(false);
-        },
-        error: function(error) {
+        })
+        .catch(error => {
           if (error.status !== 404) {
             logMessage('err', 'ERROR SAVING BOT', `${error.status} - ${error.statusText}`);
           }
-        },
-      }).done(() => {
-        loadBotVersions(botId, false);
-      });
-    },
-    error: function(error) {
+        })
+        .done(() => {
+          loadBotVersions(botId, false);
+        });
+    })
+    .catch(error => {
       $.ajax({
         url: PUT_BOT_CODE_URL,
         dataType: 'json',
@@ -422,18 +451,17 @@ function versionBotCode(botId, code) {
           version: '0.0.1',
           code,
         },
-        success: function() {
+      })
+        .then(() => {
           logMessage('bot', `${$('selBot').name()}&nbsp;<b>v0.0.1</b>&nbsp;Activated!`);
           if ($('#selBotVersion').children().length === 0) {
             $('#selBotVersion').append(`<option value="${botId}">0.0.1</option>`);
           }
-        },
-        error: function(error) {
+        })
+        .catch(error => {
           logMessage('err', 'ERROR INITIALIZING BOT', `${error.status} - ${error.statusText} initializing bot&nbsp;<b>${botId}</span>`);
-        },
-      });
-    },
-  });
+        });
+    });
 }
 
 /**
@@ -486,58 +514,55 @@ async function startGame(autoPlay = false) {
   const mazeId = $('#selMaze').val();
   const teamId = $('#selTeam').val();
   const botId = $('#selBot :selected').val();
-  const url = GAME_URL + '/new/' + mazeId + '/' + teamId + '/' + botId;
+  const NEW_GAME_URL = GAME_URL + '/new/' + mazeId + '/' + teamId + '/' + botId;
 
   return await $.ajax({
-    url: url,
+    url: NEW_GAME_URL,
     dataType: 'json',
     timeout: AJAX_TIMEOUT,
     method: 'PUT', // method is any HTTP method
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    data: {}, // data as js object
-    success: function(data) {
-      console.log('startGame() : curGame set.', data.game);
-      curGame = data.game;
-      lastActionResult = data;
+    data: {},
+  })
+    .then(gameData => {
+      // log game creation
+      logMessage('log', 'Game Created', `gameId ->${gameData.game.gameId}`);
 
+      // reset appropriate logs and globals
       if (!autoPlay) {
         $('#textLog').empty();
         $('#actionLog').empty();
         resetGlobals();
-        totalScore = totalScore + data.totalScore;
-        totalMoves = data.game.score.moveCount;
+        totalScore = totalScore + gameData.totalScore;
+        totalMoves = gameData.game.score.moveCount;
       } else {
         BOT_RAM = {};
-        totalScore = totalScore + data.totalScore;
-        totalMoves = totalMoves + data.game.score.moveCount;
+        totalScore = totalScore + gameData.totalScore;
+        totalMoves = totalMoves + gameData.game.score.moveCount;
+      }
+
+      // set global refs to new game data
+      curGame = gameData.game;
+      lastActionResult = gameData;
+
+      if (DBG) {
+        console.log('startGame() : curGame set.', curGame);
+        console.log('startGame() : lastActionResult set.', lastActionResult);
       }
 
       // load the minimap
-      scaleMiniMap(faceAvatar(data.action.outcomes[data.action.outcomes.length - 1], DIRS.SOUTH));
-
-      // log game creation
-      logMessage('log', 'Game Created', `gameId ->${data.game.gameId}`);
+      scaleMiniMap(faceAvatar(gameData.action.outcomes[gameData.action.outcomes.length - 1], DIRS.SOUTH));
 
       // and display the most recent action (new game action)
-      renderAction(data);
+      renderAction(gameData);
 
-      return Promise.resolve(data.game);
-    },
-    error: async function(err) {
-      if (err.responseJSON !== undefined) {
-        const res = err.responseJSON;
-        if (res.status === 400 && res.gameId !== undefined) {
-          logMessage('wrn', 'GAME IN PROGRESS', `gameId: ${res.gameId}`);
-        } else {
-          return Promise.reject(err);
-        }
-      } else {
-        console.warn('startGame -> ajax', err);
-        logMessage('err', 'ERROR STARTING GAME', `${err.status} - ${err.statusText}`);
-        return Promise.reject(err);
-      }
-    },
-  });
+      // return the new game id
+      return Promise.resolve(curGame.gameId);
+    })
+    .catch(ngErr => {
+      console.error('startGame() ngErr -> ', ngErr);
+      return Promise.reject(ngErr);
+    });
 }
 
 /**
@@ -547,7 +572,9 @@ async function startGame(autoPlay = false) {
  */
 async function loadGame(gameId) {
   const LOAD_GAME_URL = GAME_URL + `/get/${gameId}`;
-  console.log('loadGame', LOAD_GAME_URL);
+  if (DBG) {
+    console.log('loadGame', LOAD_GAME_URL);
+  }
 
   return await $.ajax({
     url: LOAD_GAME_URL,
@@ -555,10 +582,13 @@ async function loadGame(gameId) {
     timeout: AJAX_TIMEOUT,
     method: 'GET', // method is any HTTP method
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    data: {}, // data as js object
-    success: function(data) {
+    data: {},
+  })
+    .then(data => {
       resetGlobals();
-      console.log('loadGame() : curGame set.', data.game);
+      if (DBG) {
+        console.log('loadGame() : curGame set.', data.game);
+      }
       curGame = data.game;
       totalScore = data.totalScore;
       totalMoves = data.game.score.moveCount;
@@ -572,13 +602,12 @@ async function loadGame(gameId) {
       scaleMiniMap(mapText);
 
       return Promise.resolve(data.game);
-    },
-    error: async function(loadError) {
+    })
+    .catch(loadError => {
       console.error('loadGame', loadError);
       logMessage('err', 'ERROR LOADING GAME', loadError.status !== 0 ? `${loadError.status} - ${loadError.statusText}` : undefined);
       return Promise.reject(loadError);
-    },
-  });
+    });
 }
 
 /**
@@ -588,17 +617,19 @@ async function loadGame(gameId) {
  */
 async function quitGame() {
   if (!curGame || curGame.gameId === undefined) {
-    logMessage('wrn', 'QUIT FAILED', "You can't quit what you haven't started. Run your bot to start (or reconnect to) a game.");
+    logMessage('wrn', 'QUIT WHAT, EXACTLY?', "You aren't currently connected to a game. Try to Run, Step, or Debug your bot to start (or resume) a game.");
     return;
   }
   const QUIT_GAME_URL = GAME_URL + `/abandon/${curGame.gameId}`;
 
-  console.log('quitGame', QUIT_GAME_URL);
+  if (DBG) console.log('quitGame', QUIT_GAME_URL);
 
   // clear logs and miniMap first
-  $('#textLog').empty();
-  $('#actionLog').empty();
-  $('#miniMapContent').empty();
+  curGame = null;
+
+  // $('#textLog').empty();
+  // $('#actionLog').empty();
+  // $('#miniMapContent').empty();
 
   await $.ajax({
     url: QUIT_GAME_URL,
@@ -606,18 +637,14 @@ async function quitGame() {
     timeout: AJAX_TIMEOUT,
     method: 'DELETE', // method is any HTTP method
     headers: { Authorization: 'Basic ' + USER_CREDS },
-    success: function(data) {
-      console.log('quitGame, successful.');
-      logMessage('wrn', 'GAME QUIT SUCESSFUL');
-    },
   })
+    .then(data => {
+      if (DBG) console.log('quitGame, successful.');
+      logMessage('wrn', `GAME ABANDONED`, `You quit on game #${data.gameId}. Awww... :( Was that maze too much for your widdle, biddy, baby bot?`);
+    })
     .catch(quitError => {
       console.error('quitGame', quitError);
       logMessage('err', 'ERROR QUITTING GAME', quitError.status !== 0 ? `${quitError.status} - ${quitError.statusText}` : undefined);
-    })
-    .always(() => {
-      // reset globals no matter what
-      resetGlobals();
     });
 }
 
@@ -625,90 +652,89 @@ async function quitGame() {
  * Ensures prerequisites are met and in place before actually attempting to
  * execute the bot's code via runBot()
  *
- * @param {*} singleStep - if true, starts the bot without a callback parameter
- * @param {*} debug - adds/removes debugger; lines in bot code, as needed
+ * @param {*} stepBot - if true, starts the bot without a callback parameter
+ * @param {*} debugBot - adds/removes debugger; lines in bot code, as needed
  *
  */
-async function startBot(singleStep = true, debug = false) {
-  console.log('startBot', `singleStep=${singleStep}`, `debug=${debug}`);
+async function startBot(stepBot = true, debugBot = false) {
+  if (DBG) console.log('runBot(stepBot, debugBot)', stepBot, debugBot);
+  setBotButtonStates(false);
+  const botCode = editor.getValue();
 
   // validate and report errors - if any are found, do not continue
   if (!validateSyntax()) {
     return;
   }
 
-  const botCode = editor.getValue() + '';
+  // save any outstanding changes when run
+  if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
+    updateBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val(), botCode);
+  }
+
+  // make sure there's some code to run
   if (botCode.trim() === '') {
     logMessage('err', 'NO CODE TO RUN', 'Your bot code editor appears to be empty. You must write some code before you can run it!');
+    setBotButtonStates(true);
     return;
   }
 
-  if (curGame.gameId === undefined || lastActionResult === null) {
-    const gameReady = await startGame()
-      .then(newGame => {
-        curGame = newGame;
-        console.log('startBot -> Game created.', `GameId: ${newGame.game.gameId}`);
-        return true;
+  // if we don't have curGame.gameId or lastActionResult, we'll need to start/resume a game before proceeding
+  if (!curGame || !lastActionResult || curGame.gameId === undefined) {
+    await startGame()
+      .then(gameData => {
+        if (DBG) console.log('runBot() -> New game started. gameData.gameId=' + gameData.gameId);
       })
       .catch(async ngErr => {
-        if (ngErr.responseJSON !== undefined && ngErr.responseJSON.status === 400) {
-          const res = ngErr.responseJSON;
-          if (res.gameId !== '') {
-            console.log('startBot -> Game in progress, attempting to reconnect.', `GameId: ${res.gameId}`);
-
-            return await loadGame(res.gameId)
-              .then(existingGame => {
-                console.log('startBot -> Game loaded.', `GameId: ${existingGame.gameId}`);
-                return true;
-              })
-              .catch(lgErr => {
-                console.error('startBot -> loadGame -> Error', lgErr);
-                return false;
-              });
-          } else {
-            console.error('startBot -> startGame -> Error', lgErr);
-            return false;
-          }
+        if (ngErr && ngErr.responseJSON && ngErr.responseJSON.gameId) {
+          logMessage('wrn', 'GAME IN PROGRESS - RESUMING', `Let's pick up where you left off. Good luck!`);
+          await loadGame(ngErr.responseJSON.gameId)
+            .then(gameData => {
+              if (DBG) console.log('runBot() -> Game in progress, resuming game. gameData.gameId=' + gameData.gameId);
+            })
+            .catch(rgErr => {
+              logMessage('err', 'ERROR RESUMING GAME', rgErr.responseText ? rgErr.responseText : 'Check console log for details.');
+              console.error('startBot() -> Unable to resume game. rgErr -> ', rgErr);
+            });
+        } else {
+          logMessage('err', 'ERROR STARTING GAME', ngErr.responseText ? ngErr.responseText : 'Check console log for details.');
+          console.error('startBot() -> Unable to resume game. rgErr -> ', ngErr);
         }
       });
-
-    // if we didn't get a good game, bail out - start/getGame functions will log the errors.
-    if (!gameReady) {
-      const startBotErr = new Error('Unable to start or load a game.');
-      logMessage('err', 'UNABLE TO START GAME', 'An error is preventing a game from being created and/or started. Seek assistance.');
-      console.error('startBot', startBotErr);
-      return;
-    }
   }
 
-  // save any outstanding changes when run
-  if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
-    updateBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val(), editor.getValue());
+  // check once more to make sure everything is in order before calling the bot
+  // any errors will have previously been logged
+  if (curGame && lastActionResult && curGame.gameId !== undefined) {
+    // everything appears to be in place, so go ahead and run the bot
+    console.log('startBot -> calling runBot', curGame);
+    runBot(botCode, stepBot, debugBot);
+  } else {
+    setBotButtonStates(true);
   }
-
-  // everything appears to be in place, so go ahead and run the bot
-  runBot(botCode, singleStep, debug);
 }
 
 /**
  * After startBot() makes sure a game is in order, runBot() actually preps and
  * executes the bot's code.
  *
- * @param {string} botCode - the bot's code, pulled from editor.getValue() during startBot()
- * @param {boolean} singleStep - if true, starts the bot without a callback parameter
- * @param {boolean} debug - adds/removes debugger; lines in bot code, as needed
+ * @param {string} botCode - the bot code to run
+ * @param {boolean} stepBot - if true, starts the bot without a callback parameter
+ * @param {boolean} debugBot - adds/removes debugger; lines in bot code, as needed
+ * @return {any}
  *
  */
-function runBot(botCode, singleStep, debug) {
-  console.log('runBot', `singleStep=${singleStep}`, `debug=${debug}`);
+async function runBot(botCode, stepBot, debugBot) {
+  if (DBG) console.log('runBot', botCode.length, stepBot, debugBot);
+
   const injectionTag = '\n// @INJECTED_CODE\n';
-  const debugStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
-  const stepStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
-  const loopStart = injectionTag + 'botCallback = goBot;\ngoBot(lastActionResult);';
+  const strictScript = '"use strict";\n\n';
+  const debugStart = injectionTag + '\nbotCallback = null;\ngoBot(lastActionResult);';
+  const stepStart = injectionTag + '\nbotCallback = null;\ngoBot(lastActionResult);';
+  const loopStart = injectionTag + '\nbotCallback = goBot;\ngoBot(lastActionResult);';
   const debugScript = injectionTag + 'debugger;\n';
 
   // inject script values appropriate to the run time selected
-  if (debug) {
+  if (debugBot) {
     if (botCode.indexOf('debugger;') === -1) {
       const insKey = 'function goBot(data) {';
       const insAt = botCode.indexOf(insKey);
@@ -718,7 +744,7 @@ function runBot(botCode, singleStep, debug) {
     } else {
       botCode = botCode + debugStart;
     }
-  } else if (singleStep) {
+  } else if (stepBot) {
     botCode = botCode.replace(/debugger;/g, '');
     botCode = botCode + stepStart;
   } else {
@@ -726,10 +752,20 @@ function runBot(botCode, singleStep, debug) {
     botCode = botCode + loopStart;
   }
 
-  // give the bot it's day in the sun...
-  console.log('startBot() : Running eval(botCode)');
-  eval(botCode); // <-- TRY/CATCH HERE MASKS ERRORS THAT HAPPEN WITHIN THE BOT - IN-BOT ERROR HANDLING WOULD BE WISE
-  console.log('startBot() : botCode eval complete');
+  // force use of strict mode
+  if (botCode.indexOf('"use strict";') === -1) {
+    botCode = strictScript + botCode;
+  }
+
+  try {
+    // convert the bot text to a js function
+    if (DBG) console.log(`runBot(${stepBot}, ${debugBot}) : Creating botFn.`);
+    const botFn = new Function(botCode);
+    botFn();
+  } catch (botCodeErr) {
+    console.error(`runBot(${stepBot}, ${debugBot}) : Error running bot. botBuildErr -> `, botCodeErr);
+    logMessage('err', `BOT CODE ERROR<br />-= ${botCodeErr.message} =-`, botCodeErr.stack);
+  }
 }
 
 /**
@@ -739,7 +775,8 @@ function runBot(botCode, singleStep, debug) {
  * @param {*} action
  */
 async function executeAction(action) {
-  console.log('executeAction', action);
+  if (DBG) console.log('executeAction', action);
+
   const GAME_ACTION_URL = GAME_URL + '/action';
 
   return await $.ajax({
@@ -764,7 +801,9 @@ async function executeAction(action) {
  * @param {*} result
  */
 async function renderAction(result) {
-  console.log('renderAction', result);
+  if (DBG) {
+    console.log('renderAction', result);
+  }
   const action = result.action;
   const engram = action.engram;
 
@@ -778,10 +817,9 @@ async function renderAction(result) {
 
   // add outcomes to the log
   if (action.outcomes.length > 1) {
-    logMsg += '<hr>';
-    logMsg += 'Outcome(s):<br />';
+    logMsg += 'Outcomes:<br />';
     for (let pos = 0; pos < action.outcomes.length - 1; pos++) {
-      logMsg += pos + 1 + `: ${action.outcomes[pos]}<br />`;
+      logMsg += `&nbsp;&nbsp;&nbsp;&nbsp;<b>${pos}:</b>&nbsp;${action.outcomes[pos]}<br />`;
     }
     logMsg += '<hr>';
   }
@@ -791,7 +829,7 @@ async function renderAction(result) {
 
   // log the local "here" engram
   logMsg += `<div id="${actId}_HERE" class="engramContainer" onclick="toggleEngramContent('${actId}_HERE');">`;
-  logMsg += `  <h5><span id="${actId}_HERE_icon" class="ui-icon ui-icon-plusthick"></span>ENGRAM.HERE</h5>`;
+  logMsg += `  <h5><span id="${actId}_HERE_icon" class="ui-icon ui-icon-plus"></span>data.engram.<b>here</b></h5>`;
   logMsg += `  <p class='engramData' style="display:none"><b>.exitNorth=</b>${jsonToStr(engram.here.exitNorth)}</p>`;
   logMsg += `  <p class='engramData' style="display:none"><b>.exitSouth=</b>${jsonToStr(engram.here.exitSouth)}</p>`;
   logMsg += `  <p class='engramData' style="display:none"><b>.exitEast=</b>${jsonToStr(engram.here.exitEast)}</p>`;
@@ -804,7 +842,7 @@ async function renderAction(result) {
   for (const dir in DIRS) {
     if (DIRS[dir] >= DIRS.NORTH && DIRS[dir] <= DIRS.WEST) {
       logMsg += `<div id="${actId}_${dir}" class="engramContainer" onclick="toggleEngramContent('${actId}_${dir}');">`;
-      logMsg += `  <h5><span id="${actId}_${dir}_icon" class="ui-icon ui-icon-plusthick"></span>ENGRAM.${dir}</h5>`;
+      logMsg += `  <h5><span id="${actId}_${dir}_icon" class="ui-icon ui-icon-plus"></span>data.engram.<b>${dir.toLowerCase()}</b></h5>`;
       logMsg += `  <p class='engramData' style="display:none"><b>.see=</b>${jsonToStr(engram[dir.toLowerCase()].see)}</p>`;
       logMsg += `  <p class='engramData' style="display:none"><b>.hear=</b>${jsonToStr(engram[dir.toLowerCase()].hear)}</p>`;
       logMsg += `  <p class='engramData' style="display:none"><b>.smell=</b>${jsonToStr(engram[dir.toLowerCase()].smell)}</p>`;
@@ -1084,7 +1122,7 @@ function scaleMiniMap(textRender = '') {
     return;
   }
 
-  //   console.log('starting size: ', mm.width(), mm.height());
+  //   if (DBG) { console.log('starting size: ', mm.width(), mm.height()) };
 
   if (textRender !== '') {
     rows = textRender.split('\n').length;
@@ -1099,11 +1137,11 @@ function scaleMiniMap(textRender = '') {
   const baseFontSize = parseInt($(':root').css('font-size'));
   const mazeModOffset = baseFontSize - 13;
   const mazeMod = (rows > cols ? rows : cols) + mazeModOffset;
-  // console.log(`row-chars: ${rows}, col-chars: ${cols}, mazeMod: ${mazeMod}`);
+  // if (DBG) { console.log(`row-chars: ${rows}, col-chars: ${cols}, mazeMod: ${mazeMod}`) };
 
   const baseSize = parseInt($(':root').css('--miniMapBaseSize'));
   const newRemSize = (mmc.width() / mazeMod / baseSize).toFixed(3); // :1 aspect ratio, so only check width
-  // console.log(`newRemSize: ${newRemSize}`);
+  // if (DBG) { console.log(`newRemSize: ${newRemSize}`) };
 
   $(':root').css('--miniMapFontSize', newRemSize + 'rem');
 
@@ -1117,7 +1155,7 @@ function scaleMiniMap(textRender = '') {
 
   mm.width(pre.width() + pre.width() * 0.1);
   mm.height(pre.height() + $('#miniMap h3').height() + pre.width() * 0.1);
-  // console.log('final size: ', mm.width(), mm.height());
+  // if (DBG) { console.log('final size: ', mm.width(), mm.height()) };
 }
 
 /**
@@ -1154,6 +1192,25 @@ function faceAvatar(textMap, dir) {
 }
 
 /**
+ * Toggle run/step/debug button states while bot running
+ *
+ * @param {*} enabled
+ */
+function setBotButtonStates(enabled) {
+  if (!pageLoadComplete) return;
+
+  if (enabled) {
+    $('.btnBot').attr('disabled', false);
+    $('.btnBot').removeClass('btnDisabled');
+    $('.btnBot').addClass('btnEnabled');
+  } else {
+    $('.btnBot').attr('disabled', true);
+    $('.btnBot').addClass('btnDisabled');
+    $('.btnBot').removeClass('btnEnabled');
+  }
+}
+
+/**
  * Toggle save/version buttons based on current bot code state
  *
  * @param {*} enabled
@@ -1184,12 +1241,12 @@ function toggleEngramContent(containerId) {
   const content = $(`#${containerId} > p`);
 
   if (content.css('display') !== 'none') {
-    icon.removeClass('ui-icon-minusthick');
-    icon.addClass('ui-icon-plusthick');
+    icon.removeClass('ui-icon-minus');
+    icon.addClass('ui-icon-plus');
     content.hide();
   } else {
-    icon.addClass('ui-icon-minusthick');
-    icon.removeClass('ui-icon-plusthick');
+    icon.addClass('ui-icon-minus');
+    icon.removeClass('ui-icon-plus');
     content.show();
   }
 }
@@ -1202,7 +1259,7 @@ function toggleEngramContent(containerId) {
  */
 async function SendAction(action) {
   const method = `SendAction(action)`;
-  console.log(method, action, 'botCallback == null ? ' + botCallback === null);
+  if (DBG) console.log(method, action, 'botCallback == null ? ' + botCallback === null);
 
   if (!action) {
     const actErr = new Error('Missing Action - You must supply an action object.');
@@ -1234,6 +1291,7 @@ async function SendAction(action) {
           $('#emergencyStopDialog').html(getEndGameImg());
           $('#emergencyStopDialog').dialog('open');
           logMessage('err', 'EMERGENCY STOP');
+          setBotButtonStates(true);
           return;
         }
 
@@ -1241,7 +1299,8 @@ async function SendAction(action) {
         if (botCallback !== null && data.game.score.gameResult === GAME_RESULTS.IN_PROGRESS) {
           botCallback(data);
         } else {
-          console.log(method, 'Action chain ended or stopped, gameResult=' + data.game.score.gameResult, 'botCallback == null? ' + botCallback === null);
+          if (DBG) console.log(method, 'Chain Stopped. gameResult=', data.game.score.gameResult, 'botCallback == null? ' + botCallback === null);
+          setBotButtonStates(true);
         }
       }, CALLBACK_DELAY);
     })
@@ -1251,8 +1310,9 @@ async function SendAction(action) {
         resetGlobals();
         throw reqError;
       } else {
-        console.log('SendAction() -> gameFuncs.executeAction Error: ' + reqError.statusText);
+        if (DBG) console.log('SendAction() -> gameFuncs.executeAction Error: ' + reqError.statusText);
         logMessage('err', `ACTION ERROR - ${reqError.status}`, reqError.statusText);
+        setBotButtonStates(true);
       }
     });
 }

@@ -57,6 +57,16 @@ pre {
   border: solid 1px rgba(250, 235, 215, 0.55) !important;
 }
 
+.no-close .ui-dialog-titlebar-close {
+  display: none;
+}
+
+.no-close .ui-dialog-title {
+  position: relative;
+  text-align: center;
+  left: 1rem;
+}
+
 /* The outer container for the tooltip. */
 .ui-tooltip {
   border: solid 1px antiquewhite !important;
@@ -153,6 +163,7 @@ pre {
 
 #textLog h3 {
   font-weight: normal;
+  text-align: center;
   margin: 0;
 }
 
@@ -223,6 +234,26 @@ pre {
   border-radius: 0.15rem;
   background-color: #deb887;
   border: 1px solid #241700;
+}
+
+#loadMsgHeader {
+  text-shadow: 2px 2px 4px black;
+}
+
+#loadMsgBody {
+  /* border: solid 1px red; */
+  font-size: 0.85rem;
+  font-weight: normal;
+  text-align: right;
+  font-style: italic;
+  color: gold;
+  text-shadow: 2px 2px 4px black;
+}
+
+#loadMsgHeader > b {
+  color: red;
+  text-shadow: 2px 2px 4px black;
+  font-weight: bold;
 }
 
 #textLog p {
@@ -298,12 +329,10 @@ pre {
 
 .actionBody h5 {
   text-align: left;
-  font-size: 1rem;
-  font-weight: lighter;
+  font-size: 0.9rem;
+  font-weight: normal;
   margin: 0.1rem 0.5rem 0.1rem 0;
-  color: powderblue;
-  /* border-top: solid 1px rgba(176, 224, 230, 0.5); */
-  /* border-bottom: solid 1px rgba(176, 224, 230, 0.75); */
+  color: antiquewhite;
 }
 
 .engramContainer {
@@ -330,7 +359,9 @@ pre {
 
 .actionBody .engramData > b {
   text-align: left;
-  color: goldenrod;
+  text-indent: 1rem;
+  color: gold;
+  font-weight: normal;
 }
 
 .botMsgHdr {
