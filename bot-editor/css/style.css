@@ -117,6 +117,15 @@ pre {
   background-image: linear-gradient(to bottom, rgb(97, 18, 18), rgb(214, 0, 0));
 }
 
+#chkAutoDim {
+  height: 0.5rem;
+  position: relative;
+  float: left;
+  display: block;
+  top: -0.95rem;
+  left: -0.1rem;
+}
+
 #emergencyStopDialog {
   text-align: center;
   height: 100%;
@@ -154,7 +163,6 @@ pre {
   min-width: var(--miniMapBaseSize);
   height: var(--miniMapSize);
   width: var(--miniMapSize);
-  opacity: 0.5;
 }
 
 #miniMap:hover {
@@ -183,7 +191,7 @@ pre {
 #miniMap pre {
   color: antiquewhite;
   font-size: var(--miniMapFontSize);
-  padding: 0;
+  padding-right: 1rem;
   margin: 0;
 }
 
@@ -191,7 +199,11 @@ pre {
   border: 1px dotted rgba(250, 235, 215, 0.637);
 }
 
-#miniMap:hover {
+.dimmable {
+  opacity: 0.5;
+}
+
+.dimmable:hover {
   opacity: 1;
 }
 

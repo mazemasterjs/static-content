@@ -1,9 +1,8 @@
 /* eslint-disable no-unused-vars */
 
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
-// const GAME_URL = 'http://mazemasterjs.com/game';
-const GAME_URL = 'http://localhost:8080/game';
-// const TEAM_URL = 'http://localhost:8083/api/team';
+const GAME_URL = 'http://mazemasterjs.com/game';
+// const GAME_URL = 'http://localhost:8080/game';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
 const USER_CREDS = 'a3JlZWJvZzoxc3VwZXIx'; // TODO: Replace myCreds with a login and use btoa(userName + ':' + password) to send the Basic Auth header
 
@@ -103,7 +102,7 @@ function loadMazes() {
       }
       return Promise.resolve();
     },
-    error: function (mazeLoadErr) {
+    error: function(mazeLoadErr) {
       logMessage('err', 'ERROR LOADING MAZES', mazeLoadErr !== undefined ? `${mazeLoadErr.status} - ${mazeLoadErr.statusText}` : undefined);
     },
   });
@@ -132,7 +131,7 @@ function loadTeams() {
       }
       return Promise.resolve();
     },
-    error: function (error) {
+    error: function(error) {
       logMessage('err', 'ERROR LOADING TEAMS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
     },
   });
@@ -160,13 +159,8 @@ async function loadBots(teamId) {
         const botSel = `<option value='${bot.id}' name='${bot.name}'>${bot.name} (${bot.coder})</option>`;
         $('#selBot').append(botSel);
       }
-
-      let debugBotSel = "<option value='jd-test-bot'>";
-      debugBotSel += 'jd-test-bot (jd-test-bot)';
-      debugBotSel += '</option>';
-      $('#selBot').append(debugBotSel);
     },
-    error: function (error) {
+    error: function(error) {
       logMessage('err', 'ERROR LOADING BOTS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
     },
   }).done(() => {
@@ -201,11 +195,11 @@ function loadBotVersions(botId, autoLoadBot = true) {
         }
       }
     },
-    error: function (error) {
-      if (err.status === 404) {
+    error: function(lbvError) {
+      if (lbvError.status === 404) {
         versionBotCode(botId, editor.getValue());
       } else {
-        logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${err.status} (${err.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}</b>.`);
+        logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${lbvError.status} (${lbvError.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}</b>.`);
       }
     },
   }).done(() => {
@@ -231,7 +225,7 @@ function deleteBotCodeVersion(botId, version) {
     success: function() {
       logMessage('wrn', `BOT CODE v${version} DELETED`);
     },
-    error: function (error) {
+    error: function(error) {
       logMessage('err', `ERROR DELETING BOT CODE v${version}`, error.message === undefined ? `${error.status} - ${error.statusText}` : error.message);
     },
   });
@@ -296,8 +290,12 @@ function loadBotCode(botId, version) {
         logMessage('wrn', 'BOT CODE NOT FOUND');
       }
     },
-    error: function (error) {
-      logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${err.status} (${err.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}.</b>`);
+    error: function(codeLoadError) {
+      logMessage(
+        'err',
+        `ERROR LOADING BOT CODE &rsaquo; ${codeLoadError.status} (${codeLoadError.statusText})`,
+        `Cannot load code for bot&nbsp;<b>${botId}.</b>`,
+      );
     },
   });
 }
@@ -328,11 +326,11 @@ function updateBotCode(botId, version, code) {
       version: version,
       code,
     },
-    success: function () {
+    success: function() {
       logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${version}</b>&nbsp;- Updated.`);
       setSaveButtonStates(false);
     },
-    error: function (error) {
+    error: function(error) {
       logMessage('err', 'ERROR UPDATING BOT CODE', `${error.status} - ${error.statusText}`);
     },
   }).done(() => {
@@ -387,7 +385,6 @@ function versionBotCode(botId, code) {
       })[0].version;
 
       const newVersion = getNextVersion(topVersion);
-      console.log('Next Version=' + newVersion);
 
       $.ajax({
         url: PUT_BOT_CODE_URL,
@@ -400,22 +397,20 @@ function versionBotCode(botId, code) {
           version: newVersion,
           code,
         },
-        success: function () {
+        success: function() {
           logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${newVersion}</b>&nbsp;- New Version Saved.`);
           setSaveButtonStates(false);
         },
-        error: function (error) {
+        error: function(error) {
           if (error.status !== 404) {
             logMessage('err', 'ERROR SAVING BOT', `${error.status} - ${error.statusText}`);
-          } else {
-            console.log('New Bot - create base code version.');
           }
         },
       }).done(() => {
         loadBotVersions(botId, false);
       });
     },
-    error: function (error) {
+    error: function(error) {
       $.ajax({
         url: PUT_BOT_CODE_URL,
         dataType: 'json',
@@ -427,13 +422,13 @@ function versionBotCode(botId, code) {
           version: '0.0.1',
           code,
         },
-        success: function () {
+        success: function() {
           logMessage('bot', `${$('selBot').name()}&nbsp;<b>v0.0.1</b>&nbsp;Activated!`);
           if ($('#selBotVersion').children().length === 0) {
             $('#selBotVersion').append(`<option value="${botId}">0.0.1</option>`);
           }
         },
-        error: function (error) {
+        error: function(error) {
           logMessage('err', 'ERROR INITIALIZING BOT', `${error.status} - ${error.statusText} initializing bot&nbsp;<b>${botId}</span>`);
         },
       });
@@ -484,9 +479,10 @@ function logMessage(source, header, message) {
 /**
  * Attempts to create a new MMJS Game
  *
+ * @param {boolean} autoPlay - optional, if true will not reset all globals
  * @return {void}
  */
-async function startGame() {
+async function startGame(autoPlay = false) {
   const mazeId = $('#selMaze').val();
   const teamId = $('#selTeam').val();
   const botId = $('#selBot :selected').val();
@@ -499,16 +495,22 @@ async function startGame() {
     method: 'PUT', // method is any HTTP method
     headers: { Authorization: 'Basic ' + USER_CREDS },
     data: {}, // data as js object
-    success: function (data) {
-      $('#textLog').empty();
-      $('#actionLog').empty();
-      resetGlobals();
-
-      // set tracking vars to new game values
+    success: function(data) {
+      console.log('startGame() : curGame set.', data.game);
       curGame = data.game;
-      totalMoves = data.game.score.moveCount;
-      totalScore = data.totalScore;
       lastActionResult = data;
+
+      if (!autoPlay) {
+        $('#textLog').empty();
+        $('#actionLog').empty();
+        resetGlobals();
+        totalScore = totalScore + data.totalScore;
+        totalMoves = data.game.score.moveCount;
+      } else {
+        BOT_RAM = {};
+        totalScore = totalScore + data.totalScore;
+        totalMoves = totalMoves + data.game.score.moveCount;
+      }
 
       // load the minimap
       scaleMiniMap(faceAvatar(data.action.outcomes[data.action.outcomes.length - 1], DIRS.SOUTH));
@@ -521,7 +523,7 @@ async function startGame() {
 
       return Promise.resolve(data.game);
     },
-    error: async function (err) {
+    error: async function(err) {
       if (err.responseJSON !== undefined) {
         const res = err.responseJSON;
         if (res.status === 400 && res.gameId !== undefined) {
@@ -556,6 +558,7 @@ async function loadGame(gameId) {
     data: {}, // data as js object
     success: function(data) {
       resetGlobals();
+      console.log('loadGame() : curGame set.', data.game);
       curGame = data.game;
       totalScore = data.totalScore;
       totalMoves = data.game.score.moveCount;
@@ -584,8 +587,18 @@ async function loadGame(gameId) {
  * @param {*} gameId
  */
 async function quitGame() {
+  if (!curGame || curGame.gameId === undefined) {
+    logMessage('wrn', 'QUIT FAILED', "You can't quit what you haven't started. Run your bot to start (or reconnect to) a game.");
+    return;
+  }
   const QUIT_GAME_URL = GAME_URL + `/abandon/${curGame.gameId}`;
+
   console.log('quitGame', QUIT_GAME_URL);
+
+  // clear logs and miniMap first
+  $('#textLog').empty();
+  $('#actionLog').empty();
+  $('#miniMapContent').empty();
 
   await $.ajax({
     url: QUIT_GAME_URL,
@@ -594,20 +607,23 @@ async function quitGame() {
     method: 'DELETE', // method is any HTTP method
     headers: { Authorization: 'Basic ' + USER_CREDS },
     success: function(data) {
-      resetGlobals();
-      $('#textLog').empty();
-      $('#actionLog').empty();
-      $('#miniMapContent').empty();
+      console.log('quitGame, successful.');
+      logMessage('wrn', 'GAME QUIT SUCESSFUL');
     },
-  }).catch(quitError => {
-    console.error('quitGame', quitError);
-    logMessage('err', 'ERROR QUITTING GAME', quitError.status !== 0 ? `${quitError.status} - ${quitError.statusText}` : undefined);
-  });
+  })
+    .catch(quitError => {
+      console.error('quitGame', quitError);
+      logMessage('err', 'ERROR QUITTING GAME', quitError.status !== 0 ? `${quitError.status} - ${quitError.statusText}` : undefined);
+    })
+    .always(() => {
+      // reset globals no matter what
+      resetGlobals();
+    });
 }
 
 /**
- * Starts the bot by injecting and calling the goBot() function with or without
- * injected callback and debugger lines.
+ * Ensures prerequisites are met and in place before actually attempting to
+ * execute the bot's code via runBot()
  *
  * @param {*} singleStep - if true, starts the bot without a callback parameter
  * @param {*} debug - adds/removes debugger; lines in bot code, as needed
@@ -615,18 +631,13 @@ async function quitGame() {
  */
 async function startBot(singleStep = true, debug = false) {
   console.log('startBot', `singleStep=${singleStep}`, `debug=${debug}`);
-  const injectionTag = '\n// @INJECTED_CODE\n';
-  const debugStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
-  const stepStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
-  const loopStart = injectionTag + 'botCallback = goBot;\ngoBot(lastActionResult);';
-  const debugScript = injectionTag + 'debugger;\n';
 
   // validate and report errors - if any are found, do not continue
   if (!validateSyntax()) {
     return;
   }
 
-  let botCode = editor.getValue() + '';
+  const botCode = editor.getValue() + '';
   if (botCode.trim() === '') {
     logMessage('err', 'NO CODE TO RUN', 'Your bot code editor appears to be empty. You must write some code before you can run it!');
     return;
@@ -635,7 +646,8 @@ async function startBot(singleStep = true, debug = false) {
   if (curGame.gameId === undefined || lastActionResult === null) {
     const gameReady = await startGame()
       .then(newGame => {
-        console.log('startBot -> Game created.', `GameId: ${newGame.gameId}`);
+        curGame = newGame;
+        console.log('startBot -> Game created.', `GameId: ${newGame.game.gameId}`);
         return true;
       })
       .catch(async ngErr => {
@@ -674,6 +686,27 @@ async function startBot(singleStep = true, debug = false) {
     updateBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val(), editor.getValue());
   }
 
+  // everything appears to be in place, so go ahead and run the bot
+  runBot(botCode, singleStep, debug);
+}
+
+/**
+ * After startBot() makes sure a game is in order, runBot() actually preps and
+ * executes the bot's code.
+ *
+ * @param {string} botCode - the bot's code, pulled from editor.getValue() during startBot()
+ * @param {boolean} singleStep - if true, starts the bot without a callback parameter
+ * @param {boolean} debug - adds/removes debugger; lines in bot code, as needed
+ *
+ */
+function runBot(botCode, singleStep, debug) {
+  console.log('runBot', `singleStep=${singleStep}`, `debug=${debug}`);
+  const injectionTag = '\n// @INJECTED_CODE\n';
+  const debugStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
+  const stepStart = injectionTag + 'botCallback = null;\ngoBot(lastActionResult);';
+  const loopStart = injectionTag + 'botCallback = goBot;\ngoBot(lastActionResult);';
+  const debugScript = injectionTag + 'debugger;\n';
+
   // inject script values appropriate to the run time selected
   if (debug) {
     if (botCode.indexOf('debugger;') === -1) {
@@ -694,7 +727,9 @@ async function startBot(singleStep = true, debug = false) {
   }
 
   // give the bot it's day in the sun...
+  console.log('startBot() : Running eval(botCode)');
   eval(botCode); // <-- TRY/CATCH HERE MASKS ERRORS THAT HAPPEN WITHIN THE BOT - IN-BOT ERROR HANDLING WOULD BE WISE
+  console.log('startBot() : botCode eval complete');
 }
 
 /**
@@ -728,7 +763,7 @@ async function executeAction(action) {
  *
  * @param {*} result
  */
-function renderAction(result) {
+async function renderAction(result) {
   console.log('renderAction', result);
   const action = result.action;
   const engram = action.engram;
@@ -793,9 +828,6 @@ function renderAction(result) {
     let win = false;
     let msg = 'GAME OVER';
 
-    // reset globals - game is over
-    resetGlobals();
-
     // present game over cues
     switch (result.game.score.gameResult) {
       case GAME_RESULTS.DEATH_LAVA:
@@ -825,21 +857,56 @@ function renderAction(result) {
         logMessage('err', msg, getEndGameImg(false));
     }
 
-    if ($('#miniMapContent').css('display') !== 'none') {
-      // set a nifty ascii on the minimap
-      if (win) {
-        scaleMiniMap(cheesy);
-      } else {
-        scaleMiniMap(skully);
-      }
+    // if we win in full-auto mode, start the next maze automatically
+    if (win && botCallback !== null) {
+      let idx = $('#selMaze :selected').index();
+      const selMaze = $('#selMaze');
+      const kids = selMaze.children();
+      const max = kids.length - 1;
 
-      // toggle hide/show to reset map dimensions
-      $('#miniMapContent').hide();
-      $(':root').css('--miniMapFontSize', '0.4rem');
-      $('#miniMap').css('height', 'var(--miniMapBaseSize)rem');
-      $('#miniMap').css('width', 'var(--miniMapBaseSize)rem');
-      $('#miniMapContent').show();
+      if (idx < max) {
+        idx++;
+        while (kids[idx].value.toLowerCase().indexOf('debug') > -1) {
+          logMessage('wrn', 'Skipping debug maze: ' + kids[idx].value);
+          idx++;
+          if (idx >= kids.length - 1) {
+            break; // reached the end of the maze list
+          }
+        }
+
+        // load the next maze if we're not at the end
+        if (idx < max) {
+          selMaze.children()[idx].selected = true;
+          await startGame(true).then(() => {
+            startBot(false, false);
+          });
+        }
+      }
+    } else if (win) {
+      // game is over - end of maze list
+      logMessage('win', 'End of maze list - CONGRATULATIONS!');
+      resetGlobals();
+    } else {
+      resetGlobals();
     }
+
+    // TODO: RE-ENABLE FOR CAMP!!
+
+    // if ($('#miniMapContent').css('display') !== 'none') {
+    //   // set a nifty ascii on the minimap
+    //   if (win) {
+    //     scaleMiniMap(cheesy);
+    //   } else {
+    //     scaleMiniMap(skully);
+    //   }
+
+    //   // toggle hide/show to reset map dimensions
+    //   $('#miniMapContent').hide();
+    //   $(':root').css('--miniMapFontSize', '0.4rem');
+    //   $('#miniMap').css('height', 'var(--miniMapBaseSize)rem');
+    //   $('#miniMap').css('width', 'var(--miniMapBaseSize)rem');
+    //   $('#miniMapContent').show();
+    // }
   } else {
     textMap = faceAvatar(action.outcomes[action.outcomes.length - 1], result.playerFacing);
     const mmcPre = $('#miniMapContent > pre');
@@ -1135,7 +1202,7 @@ function toggleEngramContent(containerId) {
  */
 async function SendAction(action) {
   const method = `SendAction(action)`;
-  console.log(method, action, botCallback);
+  console.log(method, action, 'botCallback == null ? ' + botCallback === null);
 
   if (!action) {
     const actErr = new Error('Missing Action - You must supply an action object.');
@@ -1174,7 +1241,7 @@ async function SendAction(action) {
         if (botCallback !== null && data.game.score.gameResult === GAME_RESULTS.IN_PROGRESS) {
           botCallback(data);
         } else {
-          console.log('Action Chain cannot continue.', 'gameResult=' + data.game.score.gameResult, 'botCallback=' + botCallback);
+          console.log(method, 'Action chain ended or stopped, gameResult=' + data.game.score.gameResult, 'botCallback == null? ' + botCallback === null);
         }
       }, CALLBACK_DELAY);
     })
@@ -1184,8 +1251,8 @@ async function SendAction(action) {
         resetGlobals();
         throw reqError;
       } else {
-        console.log('SendAction() -> gameFuncs.executeAction Error: ' + JSON.stringify(reqError));
-        logMessage('err', `ACTION ERROR - ${reqError.message}`, reqError.trace);
+        console.log('SendAction() -> gameFuncs.executeAction Error: ' + reqError.statusText);
+        logMessage('err', `ACTION ERROR - ${reqError.status}`, reqError.statusText);
       }
     });
 }
