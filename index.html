@@ -1,7 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>MazeMasterJS - Bot Editor</title>
 
     <!-- Fonts  / Icons-->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
@@ -27,6 +30,12 @@
     <script src="js/declarations.js"></script>
     <script src="js/skully.js"></script>
     <script src="js/cheesy.js"></script>
+
+    <style>
+      .no-close .ui-dialog-titlebar-close {
+        display: none;
+      }
+    </style>
   </head>
 
   <body>
@@ -41,12 +50,12 @@
       <div class="controls">
         <label for="selBotVersion">Bot Version:</label>
         <select id="selBotVersion" class="autoScroll"></select>
-        <button id="btnSaveBotCode" class="btnDisabled" class="btnBot">
+        <button id="btnSaveBotCode" class="btnDisabled" disabled>
           Version Bot
         </button>
-        <button id="btnStartBot" class="btnBot btnEnabled" title="Run Bot (shortcut: F5 in editor)">Run Bot</button>
-        <button id="btnStepBot" class="btnBot btnEnabled" title="Run Bot (shortcut: [SHIFT + F5] in editor)">Step Bot</button>
-        <button id="btnDebugBot" class="btnBot btnEnabled" title="Debug Bot (shortcut: [CTRL + F5] in editor)">
+        <button id="btnStartBot" class="btnBot btnDisabled" disabled title="Run Bot (shortcut: F5 in editor)">Run Bot</button>
+        <button id="btnStepBot" class="btnBot btnDisabled" disabled title="Run Bot (shortcut: [SHIFT + F5] in editor)">Step Bot</button>
+        <button id="btnDebugBot" class="btnBot btnDisabled" disabled title="Debug Bot (shortcut: [CTRL + F5] in editor)">
           Debug Bot
           <span
             class="ui-icon ui-icon-help"
@@ -89,6 +98,11 @@
       <div id="miniMapContent" onresize="scaleMiniMap();"></div>
     </div>
 
+    <div id="loadingDialog" title="-= LOADING =-" style="display: none">
+      <p id="loadMsgHeader">MazeMasterJS.<b>botEditor</b> is now...</p>
+      <p id="loadMsgBody">Loading page elements...</p>
+    </div>
+
     <div id="debugDialog" title="Trouble Debugging?" style="display: none">
       <h3>TIP 1</h3>
       <p>The developer console need to be open for debugging. Press F12 to toggle it.</p>
@@ -96,20 +110,6 @@
       <p>Put the following line somewhere in your bot code to pause execution there: <b>debugger;</b></p>
       <h3>TIP 3</h3>
       <p>If there are no <b>debugger;</b> lines in your code, execution will pause on line 1.</p>
-    </div>
-
-    <div id="loginDialog" title="Log In" style="display: none">
-      <form>
-        <fieldset>
-          <label for="userName">Name</label>
-          <input type="text" name="userName" id="userName" value="Jane Smith" class="text ui-widget-content ui-corner-all" />
-          <label for="password">Password</label>
-          <input type="password" name="password" id="password" value="xxxxxxx" class="text ui-widget-content ui-corner-all" />
-
-          <!-- Allow form submission with keyboard without duplicating the dialog button -->
-          <input type="submit" tabindex="-1" style="position:absolute; top:-1000px" />
-        </fieldset>
-      </form>
     </div>
 
     <div id="emergencyStopDialog" title="EMERGENCY STOP"></div>
@@ -136,6 +136,7 @@
       );
 
       // themes: vs | vs-dark | hc-black
+      $('#loadMsgBody').text('... starting the code editor');
       const editor = monaco.editor.create(document.getElementById('editor'), {
         model,
         theme: 'vs-dark',
@@ -150,12 +151,20 @@
 
       // on page read, bind control events and start loading data
       $().ready(async () => {
-        console.log('Document ready, loading...');
+        // open up the loading dialog right away
+        $('#loadingDialog').dialog({
+          dialogClass: 'no-close',
+          width: '20vw',
+          autoOpen: true,
+          modal: true,
+          closeOnEscape: false,
+        });
+
+        $('#loadMsgBody').text('... binding controls');
 
         // make miniMap stowable
         $('#miniMap > h3').dblclick(() => {
           const mm = $('#miniMap');
-
           if ($('#miniMapContent').css('display') === 'none') {
             $('#miniMapContent').show();
             $('#miniMap').css('height', 'var(--miniMapBaseSize)rem');
@@ -224,14 +233,6 @@
           closeText: '',
         });
 
-        // set up the login dialog box
-        $('#loginDialog').dialog({
-          width: '40vw',
-          autoOpen: false,
-          modal: false,
-          closeText: '',
-        });
-
         // set up the emergency stop dialog
         $('#emergencyStopDialog').dialog({
           // position: { my: 'center', at: 'center', of: editor },
@@ -273,6 +274,7 @@
         });
 
         /** Set Editor Event Handlers **/
+        $('#loadMsgBody').text('... configuring the code editor');
 
         // F5 within the code editor will run the bot
         let runBotBinding = editor.addCommand(monaco.KeyCode.F5, function() {
@@ -314,10 +316,12 @@
         });
 
         // load the controls
+        $('#loadMsgBody').text('... loading control data');
         await loadControls()
           .then(() => {
             pageLoadComplete = true;
             window.addEventListener('beforeunload', function(e) {
+              // if save button is disabled, do not warn of lost data
               if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
                 e.preventDefault();
                 e.returnValue = '';
@@ -325,7 +329,7 @@
             });
           })
           .catch(err => {
-            console.log('load controls error: ' + err.message);
+            console.error('Erorr loading controls.', err);
           });
       });
 
