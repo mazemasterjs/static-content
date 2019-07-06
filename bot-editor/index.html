@@ -83,8 +83,9 @@
       </div>
     </section>
 
-    <div id="miniMap" class="ui-widget-content">
+    <div id="miniMap" class="ui-widget-content dimmable">
       <h3 class="ui-widget-header">MINI MAP</h3>
+      <input type="checkbox" id="chkAutoDim" name="autoDimMiniMap" title="Toggle Mini-Map Dimmer" />
       <div id="miniMapContent" onresize="scaleMiniMap();"></div>
     </div>
 
@@ -157,9 +158,13 @@
 
           if ($('#miniMapContent').css('display') === 'none') {
             $('#miniMapContent').show();
+            $('#miniMap').css('height', 'var(--miniMapBaseSize)rem');
+            $('#miniMap').css('width', 'var(--miniMapBaseSize)rem');
+            $('#chkAutoDim').show();
             mm.resizable('enable');
             // scaleMiniMap();
           } else {
+            $('#chkAutoDim').hide();
             mm.css('min-height', '0');
             mm.height($('#miniMap > h3').height());
             $('#miniMap').css('height', 'var(--miniMapBaseSize)rem');
@@ -197,12 +202,12 @@
         });
 
         $('#selTeam').change(() => {
-          resetTrackingVars();
+          resetGlobals();
           loadBots($('#selTeam :selected').val());
         });
 
         $('#selBot').change(() => {
-          resetTrackingVars();
+          resetGlobals();
           loadBotVersions($('#selBot :selected').val());
           loadBotCode($('#selBot :selected').val());
         });
@@ -256,6 +261,15 @@
           at: 'right-20 bottom-15',
           of: '#editor',
           collision: 'fit',
+        });
+
+        let chkAutoDim = $('#chkAutoDim');
+        chkAutoDim.change(() => {
+          if (chkAutoDim.prop('checked')) {
+            $('#miniMap').removeClass('dimmable');
+          } else {
+            $('#miniMap').addClass('dimmable');
+          }
         });
 
         /** Set Editor Event Handlers **/
