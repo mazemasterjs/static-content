@@ -28,6 +28,7 @@ const TROPHY_IDS = {
   YOU_FELL_FOR_IT: 25,
   YOU_FOUGHT_THE_WALL: 26,
 };
+
 const PLAYER_STATES = {
   NONE: 0,
   STANDING: 1,
@@ -61,6 +62,7 @@ const CELL_TAGS = {
   CARVED: 8,
   LAVA: 16,
 };
+
 const CELL_TRAPS = {
   NONE: 0,
   PIT: 1,
@@ -68,6 +70,7 @@ const CELL_TRAPS = {
   TARPIT: 4,
   FLAMETHOWER: 8,
 };
+
 const COMMANDS = {
   NONE: 0,
   FACE: 1,
@@ -97,6 +100,7 @@ const GAME_RESULTS = {
   WIN_FLAWLESS: 8,
   ABANDONED: 9,
 };
+
 const GAME_STATES = {
   NEW: 0,
   IN_PROGRESS: 1,
@@ -104,10 +108,19 @@ const GAME_STATES = {
   ABORTED: 3,
   ERROR: 4,
 };
+
 const GAME_MODES = {
   NONE: 0,
   SINGLE_PLAYER: 1,
   MULTI_PLAYER: 2,
+};
+
+const USER_ROLES = {
+  NONE: 0,
+  USER: 1,
+  ASSISTANT: 2,
+  INSTRUCTOR: 3,
+  ADMIN: 4,
 };
 
 // some aliasing to shorten common enums

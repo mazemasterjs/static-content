@@ -3,20 +3,16 @@
   --miniMapBaseSize: 10rem;
   font-family: 'Quicksand', sans-serif;
   font-size: 16px;
-}
-
-#pageHeader {
-  display: grid;
-  grid-template-columns: 6fr 1fr;
-  grid-template-rows: 5vh;
-  border: solid 1px red;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
 }
 
 body {
   background-color: rgb(0, 0, 0);
   color: antiquewhite;
-  margin: 1rem;
-  padding: 0;
+  height: 98vh;
 }
 
 select {
@@ -51,6 +47,36 @@ h2 {
 
 pre {
   font-family: 'Consolas', monospace;
+}
+
+a {
+  color: darkorange;
+  text-decoration: none;
+}
+
+a:hover {
+  color: gold;
+  text-decoration: underline;
+}
+
+#logout {
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.5rem;
+  vertical-align: middle;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
 }
 
 .ui-dialog {
@@ -106,7 +132,7 @@ pre {
   padding: 0.25rem;
   border-radius: 0.25rem;
   display: inline-block;
-  color: rgba(250, 235, 215, 0.5);
+  color: rgba(250, 235, 215, 0.5) !important;
   background-color: hsla(34, 14%, 52%, 0.2);
 }
 
@@ -152,8 +178,8 @@ pre {
 }
 
 #output {
-  min-width: 320px;
-  max-width: 640px;
+  min-width: 20rem;
+  max-width: 40rem;
 }
 
 #textLog {
@@ -168,6 +194,7 @@ pre {
 }
 
 #miniMap {
+  visibility: hidden;
   position: absolute;
   z-index: 10;
   min-height: var(--miniMapBaseSize);
@@ -236,12 +263,19 @@ pre {
   border: 1px solid #241700;
 }
 
+#imgLogo {
+  display: block;
+  max-width: 14.75rem;
+  max-height: 6rem;
+  width: auto;
+  height: auto;
+}
+
 #loadMsgHeader {
   text-shadow: 2px 2px 4px black;
 }
 
 #loadMsgBody {
-  /* border: solid 1px red; */
   font-size: 0.85rem;
   font-weight: normal;
   text-align: right;
@@ -273,29 +307,25 @@ pre {
 }
 
 .logHdr .ui-icon {
-  float: right;
-  margin: auto 0 0 0.5rem;
-  border: solid 1px #deb8878a;
+  text-align: right;
+  margin-top: 0.05rem;
+  margin-left: 0.25rem;
   border-radius: 0.25rem;
-  transform: scale(1.15);
+  border: solid 1px rgb(141, 132, 120);
 }
-
 .logBdy {
   margin: 0.5rem 0rem 0.5rem 0rem;
   padding: 0rem 0rem 0rem 0.5rem;
   font-size: 0.85rem;
   font-size: 0.85rem;
 }
-
 .logBdy .gameOverImgContainer {
   margin: 0.5rem 0.75rem 0.5rem 0.5rem;
   text-align: center;
 }
 
 .gameOverImgContainer img {
-  max-width: 320px;
-  border: darkgreen;
-  box-shadow: darkgreen 0px 0px 4px;
+  max-width: 310px;
 }
 
 .logBdy pre {
@@ -307,26 +337,13 @@ pre {
   word-wrap: break-word;
 }
 
-.logMsgHdr {
-  color: #faebd7;
-  border-top: solid 1px #deb887;
-  border-bottom: solid 1px #deb887;
-  background-color: rgba(150, 135, 115, 0.2);
-}
-
-.logMsgBdy {
-  color: antiquewhite;
-}
-
 .actionBody {
   font-size: 0.75rem;
   overflow-wrap: break-word;
 }
-
 .actionBody b {
   color: goldenrod;
 }
-
 .actionBody h5 {
   text-align: left;
   font-size: 0.9rem;
@@ -339,8 +356,6 @@ pre {
   margin: 0.5rem;
   padding: 0px;
   line-height: 0.25rem;
-
-  /* border: solid 1px red; */
 }
 
 .actionBody .engramContainer:hover {
@@ -364,15 +379,42 @@ pre {
   font-weight: normal;
 }
 
+.logMsgHdr {
+  color: #faebd7;
+  border-top: solid 1px #deb887;
+  border-bottom: solid 1px #deb887;
+  background-color: rgba(150, 135, 115, 0.2);
+}
+.logMsgBdy {
+  color: antiquewhite;
+}
+.logMsgBdy .gameOverImgContainer > img {
+  border: antiquewhite;
+  box-shadow: antiquewhite 0px 0px 4px;
+}
+.logMsgHdr b {
+  padding: 0 0.25rem 0 0.25rem;
+}
+
 .botMsgHdr {
   color: lightskyblue;
   border-top: solid 1px lightblue;
   border-bottom: solid 1px lightblue;
   background-color: rgba(0, 0, 139, 0.4);
 }
-
 .botMsgBdy {
   color: lightskyblue;
+}
+.botMsgBdy .gameOverImgContainer > img {
+  border: lightskyblue;
+  box-shadow: lightskyblue 0px 0px 4px;
+}
+.botMsgHdr b {
+  padding: 0 0.25rem 0 0.25rem;
+  color: rgb(200, 200, 255);
+}
+.botMsgBdy b {
+  color: rgb(200, 200, 255);
 }
 
 .winMsgHdr {
@@ -382,7 +424,18 @@ pre {
   background-color: rgba(18, 75, 18, 0.3);
 }
 .winMsgBdy {
-  color: red;
+  color: #00ff00;
+}
+.winMsgBdy .gameOverImgContainer > img {
+  border: #00ff00;
+  box-shadow: #00ff00 0px 0px 4px;
+}
+.winMsgHdr b {
+  padding: 0 0.25rem 0 0.25rem;
+  color: rgb(200, 255, 200);
+}
+.winMsgBdy b {
+  color: rgb(200, 255, 200);
 }
 
 .wrnMsgHdr {
@@ -394,6 +447,17 @@ pre {
 .wrnMsgBdy {
   color: darkorange;
 }
+.wrnMsgBdy .gameOverImgContainer > img {
+  border: darkorange;
+  box-shadow: darkorange 0px 0px 4px;
+}
+.wrnMsgHdr b {
+  padding: 0 0.25rem 0 0.25rem;
+  color: rgb(255, 200, 132);
+}
+.wrnMsgBdy b {
+  color: rgb(255, 200, 132);
+}
 
 .errMsgHdr {
   color: red;
@@ -404,30 +468,36 @@ pre {
 .errMsgBdy {
   color: red;
 }
+.errMsgBdy .gameOverImgContainer > img {
+  border: red;
+  box-shadow: red 0px 0px 4px;
+}
+.errMsgHdr b {
+  padding: 0 0.25rem 0 0.25rem;
+  color: rgb(255, 200, 200);
+}
+.errMsgBdy b {
+  color: rgb(255, 200, 200);
+}
 
 .selections {
   margin: 0.5rem;
 }
 
-.controls {
-  margin: 0.5rem;
-}
-
-.controls button {
-  margin-right: 0.5rem;
-}
-
-.controls select {
-  margin-right: 0.5rem;
+#botControls {
+  visibility: hidden;
+  width: fit-content;
 }
 
 #debugDialog {
   z-index: 99;
 }
 
-#editor {
-  min-width: 640px;
-  overflow: hidden;
+#pageContainer {
+  display: grid;
+  align-content: center;
+  grid-template-columns: auto;
+  grid-template-rows: auto auto;
 }
 
 #work-grid {
@@ -435,10 +505,114 @@ pre {
   margin: none;
   grid-column-gap: 0.5rem;
   grid-template-columns: 8fr 3fr;
-  grid-template-rows: 75vh;
+  grid-template-rows: 88vh;
 }
 
-.grid-item {
+#work-grid .grid-item {
   display: flex;
-  border: solid 1px gray;
+  border: solid 1px #deb8878a;
+}
+
+#pageHeader {
+  display: grid;
+  grid-template-columns: 8fr 3fr;
+  grid-template-rows: auto;
+  grid-column-gap: 0.5rem;
+}
+
+#pageHeader #userControls {
+  min-width: 40rem;
+  padding-right: 1rem;
+  text-align: left;
+  align-content: left;
+  justify-content: left;
+}
+
+#pageHeader .userHeader {
+  margin-top: 0.25rem;
+}
+
+#pageHeader #userControls i {
+  position: relative;
+  font-size: 1.25rem;
+  margin-left: 0.25rem;
+  top: -0.1rem;
+  color: antiquewhite;
+}
+
+#pageHeader #userControls #userHeaderIconStart {
+  margin-left: 0;
+}
+
+#pageHeader .userHeader span {
+  display: inline;
+}
+
+#pageHeader .userHeader #selBotVersion {
+  background: none;
+  min-width: 0;
+  color: antiquewhite;
+  border: solid 1px rgba(250, 235, 215, 0.5);
+  padding: 0;
+}
+
+#pageHeader .userHeader #btnSaveBotCode {
+  min-width: 0;
+  color: antiquewhite;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.25rem 0.1rem 0.25rem;
+  margin-left: 0.1rem;
+}
+
+#pageHeader .logo {
+  justify-content: left;
+  padding: 0;
+  margin: 0 0.25rem 0 0.25rem;
+  min-width: 20rem;
+  max-width: 40rem;
+}
+
+#pageHeader .logo img {
+  object-fit: contain;
+  height: 100%;
+  width: 100%;
+  min-height: 70px;
+  max-height: 140px;
+}
+
+#editor {
+  min-width: 40rem;
+  overflow: hidden;
+}
+
+#adminControls {
+  visibility: hidden;
+  margin: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  width: fit-content;
+}
+
+#adminControls > span {
+  color: darkorange;
+}
+
+#adminControls > span:hover {
+  cursor: crosshair;
+}
+
+#adminControls > hr {
+  border-color: rgba(255, 140, 0, 0.5);
+  border-width: 1px;
+  margin-left: 0.5rem;
+  margin-bottom: 0;
+}
+
+#adminControls > select {
+  margin: 0.5rem;
+  height: auto;
+  width: auto;
+  font-size: 0.7rem;
+  max-width: 8rem;
+  border-color: darkorange;
 }
