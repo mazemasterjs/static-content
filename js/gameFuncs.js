@@ -1,17 +1,17 @@
 'use strict';
 
 /* eslint-disable no-unused-vars */
-
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 // const GAME_URL = 'http://game-server-maze-master-js.b9ad.pro-us-east-1.openshiftapps.com/game';
-const GAME_URL = 'http://mazemasterjs.com/game';
-// const GAME_URL = 'http://localhost:8080/game';
+// const GAME_URL = 'http://mazemasterjs.com/game';
+const GAME_URL = 'http://localhost:8080/game';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
-const USER_CREDS = 'a3JlZWJvZzoxc3VwZXIx'; // TODO: Replace myCreds with a login and use btoa(userName + ':' + password) to send the Basic Auth header
 
+// global configuration vars
 const CALLBACK_DELAY = 0;
-const FAIL_IMG_COUNT = 30;
+const FAIL_IMG_COUNT = 31;
 const SUCC_IMG_COUNT = 31;
+const QUIT_IMG_COUNT = 12;
 const AJAX_TIMEOUT = 5000;
 const TEXTLOG_MAX_CHILDREN = 250;
 const DBG = false;
@@ -26,6 +26,16 @@ let curGame = {}; // stores the current game data in memory, referenced by send/
 let totalMoves = 0; // track the total move count (accumulated via action/result moveCount )
 let totalScore = 1000; // tracks total score (accumulated via action/result score)
 let BOT_RAM = {}; // used to persist bot-data (memory) while step-running a bot
+
+// user credentials
+const USER_NAME = Cookies.get('userName');
+const USER_CREDS = Cookies.get('userCreds');
+
+// global data storage vars
+let DATA_MAZES = [];
+let DATA_TEAM = {};
+let DATA_USER = {};
+let DATA_BOT = {};
 
 /**
  * Returns the number of object keys in BOT_RAM
@@ -47,6 +57,56 @@ const jsonToStr = obj => {
 };
 
 /**
+ * Load global game and user data elements
+ */
+async function loadData() {
+  const userPromise = doAjax(TEAM_URL + '/get/user?userName=' + USER_NAME);
+
+  // load maze stubs
+  $('#loadMsgBody').text('... loading game data');
+  doAjax(MAZE_URL + '/get').then(data => {
+    console.log('loadData(): MAZES -> ', data);
+
+    let opts = '';
+    for (const maze of data) {
+      opts = opts + `<option value="${maze.id}">${maze.name}</option>\n`;
+    }
+
+    $('#selMaze').empty();
+    $('#selMaze').append(opts);
+
+    DATA_MAZES = data;
+  });
+
+  // load user data
+  userPromise.then(data => {
+    console.log('loadData(): USER -> ', data[0]);
+    DATA_USER = data[0];
+
+    // show admin controls for elevated users
+    if (DATA_USER.role > USER_ROLES.USER) {
+      $('#adminControls').css('visibility', 'visible');
+    }
+  });
+
+  // load user and team bot data
+  userPromise.then(data => {
+    return doAjax(TEAM_URL + '/get?id=' + data[0].teamId).then(teamData => {
+      const team = teamData[0];
+      $('#userTeam').html(team.name);
+      console.log('loadData(): TEAM -> ', team);
+
+      DATA_BOT = team.bots.find(bot => {
+        return bot.id === data[0].botId;
+      });
+      $('#userBot').html(DATA_BOT.name);
+      console.log('loadData(): BOT -> ', DATA_BOT);
+      DATA_TEAM = team;
+    });
+  });
+}
+
+/**
  * Promise chain for control loading based on
  * order of load requirements
  * @return {Promise}
@@ -54,7 +114,8 @@ const jsonToStr = obj => {
 async function loadControls() {
   if (DBG) console.log('loadControls -> mazes');
   $('#loadMsgBody').text('... fetching maze data');
-  return loadMazes().then(() => {
+
+  return doAjax(`${MAZE_URL}/get`).then(() => {
     if (DBG) console.log(' loadControls -> teams');
     $('#loadMsgBody').text('... fetching team data');
     return loadTeams().then(() => {
@@ -91,30 +152,7 @@ function resetGlobals() {
  * @return {Promise}
  */
 function loadMazes() {
-  const MAZE_GET_URL = `${MAZE_URL}/get`;
-  if (DBG) {
-    console.log(' -> loadMazes -> ', MAZE_GET_URL);
-  }
-
-  return $.ajax({
-    url: MAZE_GET_URL,
-    dataType: 'json',
-    method: 'GET',
-    headers: { Authorization: 'Basic ' + USER_CREDS },
-  })
-    .then(mazes => {
-      $('#selMaze').empty();
-      for (const maze of mazes) {
-        let opt = "<option value='" + maze.id + "'>";
-        opt += `${maze.name} (${maze.height} x ${maze.width})`;
-        opt += '</option>';
-        $('#selMaze').append(opt);
-      }
-      return Promise.resolve();
-    })
-    .catch(mazeLoadErr => {
-      logMessage('err', 'ERROR LOADING MAZES', mazeLoadErr !== undefined ? `${mazeLoadErr.status} - ${mazeLoadErr.statusText}` : undefined);
-    });
+  return doAjax(`${MAZE_URL}/get`);
 }
 
 /**
@@ -640,7 +678,7 @@ async function quitGame() {
   })
     .then(data => {
       if (DBG) console.log('quitGame, successful.');
-      logMessage('wrn', `GAME ABANDONED`, `You quit on game #${data.gameId}. Awww... :( Was that maze too much for your widdle, biddy, baby bot?`);
+      logMessage('wrn', `GAME ABANDONED`, `You successfully abandoned game #${data.gameId}. ${getEndGameImg('quit')}`);
     })
     .catch(quitError => {
       console.error('quitGame', quitError);
@@ -858,7 +896,7 @@ async function renderAction(result) {
   totalScore += action.score;
 
   // now dump it all in the log
-  logMessage('log', `Move ${totalMoves} | Score ${totalScore} ${getDirectionIcon(action.direction)}${getCommandIcon(action.command)}`, logMsg);
+  logMessage('log', `Move ${totalMoves} | Score ${totalScore} ${getCommandIcon(action.command)}${getDirectionIcon(action.direction)}`, logMsg);
 
   // log the game results if game has ended
   let textMap;
@@ -870,29 +908,29 @@ async function renderAction(result) {
     switch (result.game.score.gameResult) {
       case GAME_RESULTS.DEATH_LAVA:
         msg += ' - You stepped into the lava.';
-        logMessage('err', msg, getEndGameImg(false));
+        logMessage('err', msg, getEndGameImg('fail'));
         break;
       case GAME_RESULTS.DEATH_TRAP:
         msg += ' - You hit a trap.';
-        logMessage('err', msg, getEndGameImg(false));
+        logMessage('err', msg, getEndGameImg('fail'));
         break;
       case GAME_RESULTS.OUT_OF_MOVES:
         msg += ' - You ran out of moves.';
-        logMessage('err', msg, getEndGameImg(false));
+        logMessage('err', msg, getEndGameImg('fail'));
         break;
       case GAME_RESULTS.WIN:
         win = true;
         msg += ' - You won!';
-        logMessage('win', msg, getEndGameImg(true));
+        logMessage('win', msg, getEndGameImg('win'));
         break;
       case GAME_RESULTS.WIN_FLAWLESS:
         win = true;
         msg += ' - You won... FLAWLESS VICTORY!';
-        logMessage('win', msg, getEndGameImg(true));
+        logMessage('win', msg, getEndGameImg('win'));
         break;
       default:
         msg += ' - You lost somehow... gameResult=' + result.game.score.gameResult;
-        logMessage('err', msg, getEndGameImg(false));
+        logMessage('err', msg, getEndGameImg('fail'));
     }
 
     // if we win in full-auto mode, start the next maze automatically
@@ -959,17 +997,32 @@ async function renderAction(result) {
 /**
  * Randomly selectes an image from the images/success folder
  *
- * @param {boolean} win
+ * @param {string} imgType - quit, fail, or win
  * @return {string}
  */
-function getEndGameImg(win) {
-  const maxImgNum = win ? SUCC_IMG_COUNT : FAIL_IMG_COUNT;
-  const imgNum = Math.floor(Math.random() * maxImgNum);
-  if (win) {
-    return `<div class='gameOverImgContainer'><img class='gameOverImg' src='images/success/${imgNum}.gif' onload='scrollToBottom();' /></div>`;
-  } else {
-    return `<div class='gameOverImgContainer'><img class='gameOverImg' src='images/fail/${imgNum}.gif' onload='scrollToBottom();' /></div>`;
+function getEndGameImg(imgType) {
+  let maxImgNum = 0;
+  let folder = '';
+  switch (imgType) {
+    case 'quit': {
+      maxImgNum = QUIT_IMG_COUNT;
+      folder = 'quit';
+      break;
+    }
+    case 'fail': {
+      folder = 'fail';
+      maxImgNum = FAIL_IMG_COUNT;
+      break;
+    }
+    case 'win': {
+      folder = 'win';
+      maxImgNum = SUCC_IMG_COUNT;
+      break;
+    }
   }
+
+  const imgNum = Math.floor(Math.random() * maxImgNum);
+  return `<div class='gameOverImgContainer'><img class='gameOverImg' src='images/${folder}/${imgNum}.gif' onload='scrollToBottom();' /></div>`;
 }
 
 /**
@@ -1208,6 +1261,9 @@ function setBotButtonStates(enabled) {
     $('.btnBot').addClass('btnDisabled');
     $('.btnBot').removeClass('btnEnabled');
   }
+
+  // force hide any potentially stuck tooltips
+  $('.ui-tooltip').hide();
 }
 
 /**
@@ -1229,6 +1285,9 @@ function setSaveButtonStates(enabled) {
     $('#btnSaveBotCode').removeClass('btnEnabled');
     $('#btnSaveBotCode').attr('title', '');
   }
+
+  // force hide any potentially stuck tooltips
+  $('.ui-tooltip').hide();
 }
 
 /**
@@ -1288,7 +1347,7 @@ async function SendAction(action) {
       // Stop the chain if EMERGENCY STOP was requested
       setTimeout(() => {
         if (EMERGENCY_STOP_BUTTON_PUSHED) {
-          $('#emergencyStopDialog').html(getEndGameImg());
+          $('#emergencyStopDialog').html(getEndGameImg('fail'));
           $('#emergencyStopDialog').dialog('open');
           logMessage('err', 'EMERGENCY STOP');
           setBotButtonStates(true);
@@ -1314,5 +1373,38 @@ async function SendAction(action) {
         logMessage('err', `ACTION ERROR - ${reqError.status}`, reqError.statusText);
         setBotButtonStates(true);
       }
+    });
+}
+
+/**
+ * Fetches and returns content from the provided url using the
+ * provided user auth token (btoa)
+ *
+ * @param {string} url The content url to request content from
+ * @param {string} method Optional (default 'GET'), HTTP method to use
+ * @param {string} data Optional, POJO Data to upload to the given url
+ */
+async function doAjax(url, method = 'GET', data = {}) {
+  return $.ajax({
+    url,
+    data,
+    dataType: 'json',
+    method: method,
+    contentType: 'application/json',
+    headers: { Authorization: 'Basic ' + USER_CREDS },
+  })
+    .then(data => {
+      switch (method) {
+        case 'PUT':
+        case 'DELETE': {
+          return Promise.resolve(true);
+        }
+        default: {
+          return Promise.resolve(data);
+        }
+      }
+    })
+    .catch(ajaxError => {
+      return Promise.reject(ajaxError);
     });
 }
