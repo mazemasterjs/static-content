@@ -8,13 +8,15 @@ const GAME_URL = 'http://mazemasterjs.com/game';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
 
 // global configuration vars
+let botCallBackTimer = -1;
+const CALLBACK_TIMEOUT = 3000;
 const CALLBACK_DELAY = 0;
 const FAIL_IMG_COUNT = 31;
 const SUCC_IMG_COUNT = 31;
 const QUIT_IMG_COUNT = 12;
 const AJAX_TIMEOUT = 5000;
 const TEXTLOG_MAX_CHILDREN = 250;
-const DBG = false;
+const DBG = true;
 
 // eslint-disable-next-line prefer-const
 let EMERGENCY_STOP_BUTTON_PUSHED = false; // set to true from index.html on STOP button press
@@ -60,73 +62,124 @@ const jsonToStr = obj => {
  * Load global game and user data elements
  */
 async function loadData() {
-  const userPromise = doAjax(TEAM_URL + '/get/user?userName=' + USER_NAME);
-
   // load maze stubs
   $('#loadMsgBody').text('... loading game data');
-  doAjax(MAZE_URL + '/get').then(data => {
-    console.log('loadData(): MAZES -> ', data);
 
+  //
+  // LOAD MAZES
+  //
+  if (DBG) console.log('loadData() -> Load maze stubs...');
+  doAjax(MAZE_URL + '/get').then(mazes => {
     let opts = '';
-    for (const maze of data) {
+    for (const maze of mazes) {
       opts = opts + `<option value="${maze.id}">${maze.name}</option>\n`;
     }
+    $('#selMaze').html(opts);
 
-    $('#selMaze').empty();
-    $('#selMaze').append(opts);
-
-    DATA_MAZES = data;
+    DATA_MAZES = mazes;
+    if (DBG) console.log(`loadData(): ${DATA_MAZES.length} maze stubs loaded.`);
   });
 
-  // load user data
-  userPromise.then(data => {
-    console.log('loadData(): USER -> ', data[0]);
-    DATA_USER = data[0];
+  //
+  // LOAD USER-SPECIFIC DATA
+  //
+  if (DBG) console.log('loadData() -> Load User: ' + USER_NAME);
+  doAjax(TEAM_URL + '/get/user?userName=' + USER_NAME)
+    .then(user => {
+      DATA_USER = user[0];
+      if (DBG) console.log('loadData() -> User Loaded.');
+    })
+    .then(() => {
+      if (DBG) console.log('loadData() -> Load Team: ' + DATA_USER.teamId);
+      doAjax(TEAM_URL + '/get?id=' + DATA_USER.teamId)
+        .then(team => {
+          DATA_TEAM = team[0];
+          $('#userTeam').html(DATA_TEAM.name);
+          if (DBG) console.log('loadData() -> Team Loaded.');
+        })
+        .then(() => {
+          if (DBG) console.log('loadData() -> Find Bot: ' + DATA_USER.botId);
+          DATA_BOT = DATA_TEAM.bots.find(bot => {
+            return bot.id === DATA_USER.botId;
+          });
 
-    // show admin controls for elevated users
-    if (DATA_USER.role > USER_ROLES.USER) {
-      $('#adminControls').css('visibility', 'visible');
-    }
-  });
+          $('#userBot').html(DATA_BOT.name);
+          if (DBG) console.log('loadData() -> Bot Found.', DATA_BOT);
 
-  // load user and team bot data
-  userPromise.then(data => {
-    return doAjax(TEAM_URL + '/get?id=' + data[0].teamId).then(teamData => {
-      const team = teamData[0];
-      $('#userTeam').html(team.name);
-      console.log('loadData(): TEAM -> ', team);
+          loadBotVersions(DATA_USER.botId, true);
+        })
+        .then(() => {
+          //
+          // LOAD ELEVATED USER DATA (if needed)
+          //
+          if (DATA_USER.role > USER_ROLES.USER) {
+            if (DBG) console.log('loadData() -> All Teams.');
+            doAjax(TEAM_URL + '/get').then(teams => {
+              let opts = '';
+              for (const team of teams) {
+                opts = opts + `<option value="${team.id}"`;
+                if (team.id === DATA_USER.teamId) {
+                  opts = opts + ' selected="selected"';
 
-      DATA_BOT = team.bots.find(bot => {
-        return bot.id === data[0].botId;
-      });
-      $('#userBot').html(DATA_BOT.name);
-      console.log('loadData(): BOT -> ', DATA_BOT);
-      DATA_TEAM = team;
+                  // load bots for selected team
+                  let botOpts = '';
+                  for (const bot of team.bots) {
+                    botOpts += `<option value="${bot.id}" name="${bot.name}"`;
+                    if (bot.id === DATA_USER.botId) {
+                      botOpts = botOpts + ' selected="selected"';
+                      loadBotVersions(bot.id, false);
+                    }
+                    botOpts = botOpts + `>${bot.name}</option>\n`;
+                  }
+                  $('#selBot').html(botOpts);
+                }
+                opts = opts + `>${team.name}</option>\n`;
+              }
+              $('#selTeam').html(opts);
+            });
+
+            // $('.adminControl').css('visibility', 'visible');
+            $('#adminSelects').css('visibility', 'visible');
+          }
+        })
+        .then(() => {
+          $('#loadingDialog').dialog('close');
+          setBotButtonStates(true);
+        });
     });
-  });
 }
 
 /**
- * Promise chain for control loading based on
- * order of load requirements
- * @return {Promise}
+ * Loads bot values into controls for given team
+ * @param {*} teamId
  */
-async function loadControls() {
-  if (DBG) console.log('loadControls -> mazes');
-  $('#loadMsgBody').text('... fetching maze data');
+async function loadBots(teamId) {
+  const BOT_GET_URL = `${TEAM_URL}/get?id=${teamId}`;
+  if (DBG) console.log('loadBots() -> ', teamId, BOT_GET_URL);
 
-  return doAjax(`${MAZE_URL}/get`).then(() => {
-    if (DBG) console.log(' loadControls -> teams');
-    $('#loadMsgBody').text('... fetching team data');
-    return loadTeams().then(() => {
-      if (DBG) console.log('  loadControls -> bots');
-      $('#loadMsgBody').text('... loading bots for team ' + $('#selTeam :selected').val());
-      return loadBots($('#selTeam :selected').val()).then(() => {
-        console.log('loadControls -> Promise chain complete.');
-        logMessage('log', 'READY TO&nbsp;<b>ROCK!</b>', 'The bot editor is ready.');
-      });
+  if (!teamId) return;
+
+  return $.ajax({
+    url: BOT_GET_URL,
+    dataType: 'json',
+    method: 'GET',
+    headers: { Authorization: 'Basic ' + USER_CREDS },
+  })
+    .then(data => {
+      const team = data[0];
+      const botSel = [];
+      for (const bot of team.bots) {
+        botSel.push(`<option value='${bot.id}'>${bot.name}</option>`);
+      }
+      $('#selBot').html(botSel.join());
+      $('#selBot').change();
+    })
+    .catch(error => {
+      logMessage('err', 'ERROR LOADING BOTS', error.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
+    })
+    .done(() => {
+      loadBotVersions($('#selBot :selected').val());
     });
-  });
 }
 
 /**
@@ -145,6 +198,8 @@ function resetGlobals() {
   botCallback = null;
   totalMoves = 0;
   totalScore = 1000;
+  clearInterval(botCallBackTimer);
+  setBotButtonStates(true);
 }
 
 /**
@@ -156,82 +211,16 @@ function loadMazes() {
 }
 
 /**
- * Loads team values into controls
- *
- * @return {Promise}
- */
-function loadTeams() {
-  const TEAM_GET_URL = `${TEAM_URL}/get`;
-  if (DBG) {
-    console.log('  -> loadTeams -> ', TEAM_GET_URL);
-  }
-  return $.ajax({
-    url: TEAM_GET_URL,
-    dataType: 'json',
-    method: 'GET',
-    headers: { Authorization: 'Basic ' + USER_CREDS },
-  })
-    .then(teams => {
-      $('#selTeam').empty();
-      for (const team of teams) {
-        let opt = "<option value='" + team.id + "'>";
-        opt += team.name;
-        opt += '</option>';
-        $('#selTeam').append(opt);
-      }
-      return Promise.resolve();
-    })
-    .catch(error => {
-      logMessage('err', 'ERROR LOADING TEAMS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
-    });
-}
-
-/**
- * Loads bot values into controls for given team
- * @param {*} teamId
- */
-async function loadBots(teamId) {
-  const BOT_GET_URL = `${TEAM_URL}/get?id=${teamId}`;
-  if (DBG) {
-    console.log('   -> loadBots -> ', teamId, BOT_GET_URL);
-  }
-  if (!teamId) return;
-
-  return $.ajax({
-    url: BOT_GET_URL,
-    dataType: 'json',
-    method: 'GET',
-    headers: { Authorization: 'Basic ' + USER_CREDS },
-  })
-    .then(data => {
-      const team = data[0];
-      $('#selBot').empty();
-      for (const bot of team.bots) {
-        const botSel = `<option value='${bot.id}' name='${bot.name}'>${bot.name} (${bot.coder})</option>`;
-        $('#selBot').append(botSel);
-      }
-    })
-    .catch(error => {
-      logMessage('err', 'ERROR LOADING BOTS', err.status !== 0 ? `${error.status} - ${error.statusText}` : undefined);
-    })
-    .done(() => {
-      loadBotVersions($('#selBot :selected').val());
-    });
-}
-
-/**
  * Populates the version select control with all versions available for the given bot
  * @param {*} botId
  * @param {*} autoLoadBot
  * @return {void}
  */
 function loadBotVersions(botId, autoLoadBot = true) {
-  $('#loadMsgBody').text('... collecting versions of ' + $('#selBot :selected').val());
+  $('#loadMsgBody').text('... collecting versions for bot ' + botId);
 
   const BOT_CODE_URL = TEAM_URL + '/get/botCode?botId=' + botId;
-  if (DBG) {
-    console.log('    -> loadBotVersions ->', botId);
-  }
+  if (DBG) console.log('loadBotVersions() -> ', botId, autoLoadBot);
 
   return $.ajax({
     url: BOT_CODE_URL,
@@ -240,19 +229,15 @@ function loadBotVersions(botId, autoLoadBot = true) {
     headers: { Authorization: 'Basic ' + USER_CREDS },
   })
     .then(docs => {
-      $('#selBotVersion').empty();
-      let versionCount = 0;
+      const opts = [];
       for (const doc of docs.reverse()) {
-        versionCount++;
-        if (versionCount > 25) {
-          deleteBotCodeVersion(botId, doc.version);
-        } else {
-          $('#selBotVersion').append(`<option value="${doc.version}">${doc.version}</option>`);
-        }
+        opts.push(`<option value="${doc.version}">${doc.version}</option>\n`);
       }
+      $('#selBotVersion').html(opts.join());
     })
     .catch(lbvError => {
       if (lbvError.status === 404) {
+        if (DBG) console.log('loadBotVersions() -> No versions found, auto-generating v0.0.1.');
         versionBotCode(botId, editor.getValue());
       } else {
         logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${lbvError.status} (${lbvError.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}</b>.`);
@@ -260,7 +245,7 @@ function loadBotVersions(botId, autoLoadBot = true) {
     })
     .done(() => {
       if (autoLoadBot) {
-        loadBotCode($('#selBot :selected').val());
+        loadBotCode(botId);
       }
     });
 }
@@ -305,7 +290,7 @@ function loadBotCode(botId, version) {
     BOT_CODE_URL += `&version=${version}`;
   }
 
-  if (DBG) console.log('loadBotCode', botId, version, BOT_CODE_URL);
+  console.log('loadBotCode', botId, version, BOT_CODE_URL);
 
   return $.ajax({
     url: BOT_CODE_URL,
@@ -332,10 +317,15 @@ function loadBotCode(botId, version) {
         $('#selBotVersion').val(botCode.version);
         const date = new Date(botCode.lastUpdated);
 
+        let botName = DATA_BOT.name;
+        if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId !== $('#selBot :selected').text()) {
+          botName = $('#selBot :selected').text();
+        }
+
         logMessage(
           'log',
-          `"${$('#selBot :selected').attr('name')}" v${botCode.version} Loaded.`,
-          `"${$('#selBot :selected').attr('name')}" v${botCode.version} was last saved on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}.`,
+          `"${botName}" v${botCode.version} Loaded.`,
+          `"${botName}" v${botCode.version} was last saved on ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}.`,
         );
 
         // load the code into the editor
@@ -392,15 +382,20 @@ function updateBotCode(botId, version, code) {
     },
   })
     .then(() => {
-      logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${version}</b>&nbsp;- Updated.`);
+      let botName = DATA_BOT.name;
+      if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
+        botName = $('#selBot :selected').attr('name');
+      }
+
+      logMessage('bot', `"${botName}" v<b>${version}</b>&nbsp;- Updated.`);
       setSaveButtonStates(false);
     })
     .catch(error => {
-      logMessage('err', 'ERROR UPDATING BOT CODE', `${error.status} - ${error.statusText}`);
-    })
-    .done(() => {
-      loadBotVersions(botId, false);
+      logMessage('err', 'ERROR UPDATING BOT CODE', JSON.stringify(error));
     });
+  // .done(() => {
+  //   loadBotVersions(botId, false);
+  // });
 }
 
 /**
@@ -465,7 +460,12 @@ function versionBotCode(botId, code) {
         },
       })
         .then(() => {
-          logMessage('bot', `"${$('#selBot :selected').attr('name')}" v<b>${newVersion}</b>&nbsp;- New Version Saved.`);
+          let botName = DATA_BOT.name;
+          if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
+            botName = $('#selBot :selected').attr('name');
+          }
+
+          logMessage('bot', `"${botName}" v<b>${newVersion}</b>&nbsp;- New Version Saved.`);
           setSaveButtonStates(false);
         })
         .catch(error => {
@@ -477,7 +477,7 @@ function versionBotCode(botId, code) {
           loadBotVersions(botId, false);
         });
     })
-    .catch(error => {
+    .catch(() => {
       $.ajax({
         url: PUT_BOT_CODE_URL,
         dataType: 'json',
@@ -550,8 +550,17 @@ function logMessage(source, header, message) {
  */
 async function startGame(autoPlay = false) {
   const mazeId = $('#selMaze').val();
-  const teamId = $('#selTeam').val();
-  const botId = $('#selBot :selected').val();
+  let teamId = DATA_USER.teamId;
+  let botId = DATA_USER.botId;
+
+  if (DATA_USER.role > USER_ROLES.USER && DATA_USER.teamId === $('#selTeam :selected').val()) {
+    teamId = $('#selTeam :selected').val();
+  }
+
+  if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
+    botId = $('#selBot :selected').val();
+  }
+
   const NEW_GAME_URL = GAME_URL + '/new/' + mazeId + '/' + teamId + '/' + botId;
 
   return await $.ajax({
@@ -706,7 +715,13 @@ async function startBot(stepBot = true, debugBot = false) {
 
   // save any outstanding changes when run
   if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
-    updateBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val(), botCode);
+    let botId = DATA_USER.botId;
+
+    // admin botId select override
+    if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
+      botId = $('#selBot :selected').val();
+    }
+    updateBotCode(botId, $('#selBotVersion :selected').val(), botCode);
   }
 
   // make sure there's some code to run
@@ -720,14 +735,14 @@ async function startBot(stepBot = true, debugBot = false) {
   if (!curGame || !lastActionResult || curGame.gameId === undefined) {
     await startGame()
       .then(gameData => {
-        if (DBG) console.log('runBot() -> New game started. gameData.gameId=' + gameData.gameId);
+        if (DBG) console.log('startBot() -> New game started. gameData.gameId=' + gameData.gameId);
       })
       .catch(async ngErr => {
         if (ngErr && ngErr.responseJSON && ngErr.responseJSON.gameId) {
           logMessage('wrn', 'GAME IN PROGRESS - RESUMING', `Let's pick up where you left off. Good luck!`);
           await loadGame(ngErr.responseJSON.gameId)
             .then(gameData => {
-              if (DBG) console.log('runBot() -> Game in progress, resuming game. gameData.gameId=' + gameData.gameId);
+              if (DBG) console.log('startBot() -> Game in progress, resuming game. gameData.gameId=' + gameData.gameId);
             })
             .catch(rgErr => {
               logMessage('err', 'ERROR RESUMING GAME', rgErr.responseText ? rgErr.responseText : 'Check console log for details.');
@@ -799,6 +814,8 @@ async function runBot(botCode, stepBot, debugBot) {
     // convert the bot text to a js function
     if (DBG) console.log(`runBot(${stepBot}, ${debugBot}) : Creating botFn.`);
     const botFn = new Function(botCode);
+    clearInterval(botCallBackTimer);
+    botCallBackTimer = setInterval(callbackTimeout, CALLBACK_TIMEOUT); // safety check for bots that fall out of the function (or get stuck) before sending an action
     botFn();
   } catch (botCodeErr) {
     console.error(`runBot(${stepBot}, ${debugBot}) : Error running bot. botBuildErr -> `, botCodeErr);
@@ -1252,6 +1269,9 @@ function faceAvatar(textMap, dir) {
 function setBotButtonStates(enabled) {
   if (!pageLoadComplete) return;
 
+  // cancel the bot timer
+  clearInterval(botCallBackTimer);
+
   if (enabled) {
     $('.btnBot').attr('disabled', false);
     $('.btnBot').removeClass('btnDisabled');
@@ -1332,6 +1352,10 @@ async function SendAction(action) {
     throw cmdErr;
   }
 
+  if (!action.direction) {
+    action.direction = DIRECTIONS.NONE;
+  }
+
   if (!curGame || !curGame.gameId || curGame.gameId.trim() === '') {
     const gameIdErr = new Error('Invalid Game - No game is currently in progress.');
     logMessage('err', 'Invalid Game', gameIdErr.message);
@@ -1356,6 +1380,8 @@ async function SendAction(action) {
 
         // Only continue chain if game is still in progress and botCallback is set
         if (botCallback !== null && data.game.score.gameResult === GAME_RESULTS.IN_PROGRESS) {
+          clearInterval(botCallBackTimer);
+          botCallBackTimer = setInterval(callbackTimeout, CALLBACK_TIMEOUT); // safety check for bots that fall out of the function (or get stuck) before sending an action
           botCallback(data);
         } else {
           if (DBG) console.log(method, 'Chain Stopped. gameResult=', data.game.score.gameResult, 'botCallback == null? ' + botCallback === null);
@@ -1374,6 +1400,18 @@ async function SendAction(action) {
         setBotButtonStates(true);
       }
     });
+}
+
+/**
+ * Reset botCallback and enables bot control if goBot() fails to call SendAction within
+ * the timeout value set by CALLBACK_TIMEOUT
+ *
+ */
+function callbackTimeout() {
+  clearInterval(botCallBackTimer);
+  botCallback = null;
+  setBotButtonStates(true);
+  logMessage('wrn', 'BOT TIMEOUT', 'Your bot timed out. It may have forgotten to call SendAction() before it exited or returned.');
 }
 
 /**
