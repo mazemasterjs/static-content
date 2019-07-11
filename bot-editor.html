@@ -67,16 +67,11 @@
       </div>
     </div>
 
-    <div id="adminControls">
-      <!-- these controls should be replaced with a login feature -->
-      <span title="oooOOOOooooo... You must be special!">-~= ADMIN CONTROLS =~-</span>
-      <hr />
-      <select name="selMaze" id="selMaze"></select>
-      <select name="selTeam" id="selTeam"></select>
-      <select name="selBot" id="selBot"></select>
-    </div>
-
     <div id="botControls">
+      <div class="mazeSelect">
+        <select name="selMaze" id="selMaze"></select>
+      </div>
+
       <button id="btnStartBot" class="btnBot btnDisabled" tabindex="-1" disabled title="Run Bot (shortcut: F5 in editor)">Run Bot</button>
       <button id="btnStepBot" class="btnBot btnDisabled" tabindex="-1" disabled title="Run Bot (shortcut: [SHIFT + F5] in editor)">Step Bot</button>
       <button id="btnDebugBot" class="btnBot btnDisabled" tabindex="-1" disabled title="Debug Bot (shortcut: [CTRL + F5] in editor)">
@@ -97,6 +92,12 @@
     </div>
 
     <section id="hidden-dialogs">
+      <div id="adminSelects">
+        <div>-~= ADMIN CONTROLS =~-</div>
+        <select name="selTeam" id="selTeam" class="adminControl"></select>
+        <select name="selBot" id="selBot" class="adminControl"></select>
+      </div>
+
       <div id="miniMap" class="ui-widget-content dimmable">
         <h3 class="ui-widget-header">MINI MAP</h3>
         <input type="checkbox" id="chkAutoDim" name="autoDimMiniMap" title="Toggle Mini-Map Dimmer" />
@@ -178,18 +179,17 @@
           $('#loadMsgHeader').html(`<b>Authentication Failure</b>`);
           $('#loadMsgBody').html(`<span style='color:antiquewhite'>Redirecting you to the log in page in</span>&nbsp;<b>${countdown}</b>...`);
           setInterval(() => {
-            countdown--;
+            if (countdown > 0) {
+              countdown--;
+            }
             $('#loadMsgBody').html(`<span style='color:antiquewhite'>Redirecting you to the log in page in</span>&nbsp;<b>${countdown}</b>...`);
           }, 1000);
           setTimeout(() => {
             window.location = 'index.html';
-          }, 3500);
+          }, 3250);
           return;
         } else {
           $('#userName').html(`<b>${Cookies.get('userName')}</b>`);
-          // <div id="userName">Welcome, Coder!</div>
-          // <div id="userTeam">Team:</div>
-          // <div id="userBot">Bot:</div>
         }
 
         $('#loadMsgBody').text('... binding controls');
@@ -222,7 +222,11 @@
         });
 
         $('#btnSaveBotCode').click(() => {
-          versionBotCode($('#selBot :selected').val(), editor.getValue());
+          let botId = DATA_USER.botId;
+          if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
+            botId = $('#selBot :selected').val();
+          }
+          versionBotCode(botId, editor.getValue());
         });
 
         $('#btnStartBot').click(() => {
@@ -256,18 +260,53 @@
         });
 
         $('#selTeam').change(() => {
+          console.log('selTeam.change()');
           resetGlobals();
-          loadBots($('#selTeam :selected').val());
+          loadBots($('#selTeam :selected').val()).then(() => {
+            const userTeamName = DATA_TEAM.name;
+            const selTeamName = $('#selTeam :selected').text();
+
+            if (selTeamName != userTeamName) {
+              $('#userTeam').html(userTeamName + ' -> <span style="color:red;">' + selTeamName + '</span>');
+            } else {
+              $('#userTeam').html(userTeamName);
+            }
+
+            const userBotName = DATA_BOT.name;
+            const selBotName = $('#selBot :selected').text();
+            if (selBotName != userBotName) {
+              $('#userBot').html(userBotName + ' -> <span style="color:red;">' + selBotName + '</span>');
+            } else {
+              $('#userBot').html(userBotName);
+            }
+          });
         });
 
         $('#selBot').change(() => {
+          console.log('selBot.change()');
           resetGlobals();
-          loadBotVersions($('#selBot :selected').val());
-          loadBotCode($('#selBot :selected').val());
+          loadBotVersions($('#selBot :selected').val(), true);
+
+          const userBotName = DATA_BOT.name;
+          const selBotName = $('#selBot :selected').text();
+
+          if (selBotName != userBotName) {
+            $('#userBot').html(userBotName + ' -> <span style="color:red;">' + selBotName + '</span>');
+          } else {
+            $('#userBot').html(userBotName);
+          }
         });
 
         $('#selBotVersion').change(() => {
-          loadBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val());
+          if (pageLoadComplete) {
+            console.log('selBotVersion.change()');
+
+            if (DATA_USER.role > USER_ROLES.USER) {
+              loadBotCode($('#selBot :selected').val(), $('#selBotVersion :selected').val());
+            } else {
+              loadBotCode(DATA_USER.botId, $('#selBotVersion :selected').val());
+            }
+          }
         });
 
         // set up the debug warning dialog
@@ -329,9 +368,7 @@
 
         // CTRL+S will auto-format and version the bot code
         let saveBotBinding = editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, function() {
-          if (!$('#btnSaveBotCode').attr('disabled')) {
-            versionBotCode($('#selBot :selected').val(), editor.getValue());
-          }
+          $('#btnSaveBotCode').click();
         });
 
         // manage save button states when content changes
@@ -353,24 +390,7 @@
           scaleMiniMap();
         });
 
-        // load the controls
-        $('#loadMsgBody').text('... loading control data');
-        await loadControls()
-          .then(() => {
-            pageLoadComplete = true;
-            window.addEventListener('beforeunload', function(e) {
-              // if save button is disabled, do not warn of lost data
-              if ($('#btnSaveBotCode').hasClass('btnEnabled')) {
-                e.preventDefault();
-                e.returnValue = '';
-              }
-            });
-          })
-          .catch(err => {
-            console.error('Error loading controls.', err);
-          });
-
-        await loadData();
+        loadData();
         pageResize();
 
         $('#botControls').css('visibility', 'visible');
@@ -390,15 +410,20 @@
 
         $('#botControls').position({
           my: 'right bottom',
-          at: 'right-20 bottom-5',
+          at: 'right top-7',
           of: '#editor',
+          collision: 'fit none',
         });
 
-        $('#adminControls').position({
-          my: 'right bottom',
-          at: 'right top',
+        $('#adminSelects').position({
+          my: 'center bottom',
+          at: 'center top',
           of: '#editor',
+          collision: 'fit none',
         });
+
+        pageLoadComplete = true;
+        setSaveButtonStates(true);
       }
 
       // keep textLog always scrolled to the bottom
