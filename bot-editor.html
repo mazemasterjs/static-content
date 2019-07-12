@@ -93,7 +93,7 @@
 
     <section id="hidden-dialogs">
       <div id="adminSelects">
-        <div>-~= ADMIN CONTROLS =~-</div>
+        <div>ADMIN CONTROLS</div>
         <select name="selTeam" id="selTeam" class="adminControl"></select>
         <select name="selBot" id="selBot" class="adminControl"></select>
       </div>
@@ -223,7 +223,7 @@
 
         $('#btnSaveBotCode').click(() => {
           let botId = DATA_USER.botId;
-          if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
+          if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId !== $('#selBot :selected').val()) {
             botId = $('#selBot :selected').val();
           }
           versionBotCode(botId, editor.getValue());
@@ -259,10 +259,11 @@
           quitGame();
         });
 
-        $('#selTeam').change(() => {
+        $('#selTeam').change(async () => {
           console.log('selTeam.change()');
           resetGlobals();
-          loadBots($('#selTeam :selected').val()).then(() => {
+          $('#selBot').attr('disabled', true);
+          await loadBots($('#selTeam :selected').val()).then(() => {
             const userTeamName = DATA_TEAM.name;
             const selTeamName = $('#selTeam :selected').text();
 
@@ -280,9 +281,14 @@
               $('#userBot').html(userBotName);
             }
           });
+          $('#selBot').attr('disabled', false);
         });
 
         $('#selBot').change(() => {
+          if ($('#selBot').attr('disabled') == 'disabled') {
+            console.log('selBot.change() aborted - Team changing.');
+            return;
+          }
           console.log('selBot.change()');
           resetGlobals();
           loadBotVersions($('#selBot :selected').val(), true);
@@ -319,7 +325,6 @@
 
         // set up the emergency stop dialog
         $('#emergencyStopDialog').dialog({
-          // position: { my: 'center', at: 'center', of: editor },
           autoOpen: false,
           modal: true,
           closeOnEscape: true,
@@ -368,7 +373,9 @@
 
         // CTRL+S will auto-format and version the bot code
         let saveBotBinding = editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, function() {
-          $('#btnSaveBotCode').click();
+          if (!$('#btnSaveBotCode').hasClass('btnDisabled')) {
+            $('#btnSaveBotCode').click();
+          }
         });
 
         // manage save button states when content changes
@@ -417,9 +424,9 @@
 
         $('#adminSelects').position({
           my: 'center bottom',
-          at: 'center top',
-          of: '#editor',
-          collision: 'fit none',
+          at: 'center top-10',
+          of: '#textLog',
+          collision: 'fitflip',
         });
 
         pageLoadComplete = true;

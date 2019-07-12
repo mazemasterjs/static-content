@@ -195,6 +195,7 @@ a:hover {
 #miniMap {
   visibility: hidden;
   position: absolute;
+  top: 0;
   z-index: 10;
   min-height: var(--miniMapBaseSize);
   min-width: var(--miniMapBaseSize);
@@ -363,7 +364,6 @@ a:hover {
 
 .engramData {
   display: none;
-  /* visibility: hidden; */
   line-height: 1.25rem;
   margin: 0;
   overflow-x: auto;
@@ -495,7 +495,7 @@ a:hover {
   margin: none;
   grid-column-gap: 0.5rem;
   grid-template-columns: 8fr 3fr;
-  grid-template-rows: 88vh;
+  grid-template-rows: 85vh;
 }
 
 #work-grid .grid-item {
@@ -555,8 +555,8 @@ a:hover {
 }
 
 #pageHeader .logo {
-  justify-content: left;
-  padding: 0;
+  text-align: center;
+  padding: 0 0 0.5rem 0;
   margin: 0 0.25rem 0 0.25rem;
   min-width: 20rem;
   max-width: 40rem;
@@ -577,11 +577,12 @@ a:hover {
 
 #botControls {
   visibility: hidden;
+  position: absolute;
+  top: 0;
   width: fit-content;
 }
 
 .adminControl {
-  /* visibility: hidden; */
   margin: 0.5rem 0.5rem 0.5rem 0;
   height: auto;
   width: auto;
@@ -592,13 +593,16 @@ a:hover {
 
 #adminSelects {
   position: absolute;
+  visibility: hidden;
   top: 0;
+  color: darkorange;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.75);
+  border: solid 1px darkorange;
+  border-radius: 0.25rem;
+  padding: 0.5rem 0 0.25rem 0.5rem;
   font-size: 0.7rem;
   text-align: center;
-  visibility: hidden;
-  display: inline-block;
-  font-weight: bold;
-  color: darkorange;
 }
 
 .mazeSelect {
