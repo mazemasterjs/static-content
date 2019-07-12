@@ -234,18 +234,17 @@ function loadBotVersions(botId, autoLoadBot = true) {
         opts.push(`<option value="${doc.version}">${doc.version}</option>\n`);
       }
       $('#selBotVersion').html(opts.join());
+
+      if (autoLoadBot) {
+        loadBotCode(botId);
+      }
     })
     .catch(lbvError => {
       if (lbvError.status === 404) {
         if (DBG) console.log('loadBotVersions() -> No versions found, auto-generating v0.0.1.');
         versionBotCode(botId, editor.getValue());
       } else {
-        logMessage('err', `ERROR LOADING BOT CODE &rsaquo; ${lbvError.status} (${lbvError.statusText})`, `Cannot load code for bot&nbsp;<b>${botId}</b>.`);
-      }
-    })
-    .done(() => {
-      if (autoLoadBot) {
-        loadBotCode(botId);
+        logMessage('err', `ERROR LOADING BOT CODE`, `Cannot load code for bot <b>${botId}</b> - ${lbvError.status} (${lbvError.statusText})`);
       }
     });
 }
@@ -383,8 +382,8 @@ function updateBotCode(botId, version, code) {
   })
     .then(() => {
       let botName = DATA_BOT.name;
-      if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
-        botName = $('#selBot :selected').attr('name');
+      if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId !== $('#selBot :selected').val()) {
+        botName = $('#selBot :selected').text();
       }
 
       logMessage('bot', `"${botName}" v<b>${version}</b>&nbsp;- Updated.`);
@@ -461,8 +460,8 @@ function versionBotCode(botId, code) {
       })
         .then(() => {
           let botName = DATA_BOT.name;
-          if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
-            botName = $('#selBot :selected').attr('name');
+          if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId !== $('#selBot :selected').val()) {
+            botName = $('#selBot :selected').text();
           }
 
           logMessage('bot', `"${botName}" v<b>${newVersion}</b>&nbsp;- New Version Saved.`);
@@ -491,7 +490,7 @@ function versionBotCode(botId, code) {
         },
       })
         .then(() => {
-          logMessage('bot', `${$('selBot').name()}&nbsp;<b>v0.0.1</b>&nbsp;Activated!`);
+          logMessage('bot', `${$('selBot').text()}&nbsp;<b>v0.0.1</b>&nbsp;Initialized!`);
           if ($('#selBotVersion').children().length === 0) {
             $('#selBotVersion').append(`<option value="${botId}">0.0.1</option>`);
           }
@@ -718,7 +717,7 @@ async function startBot(stepBot = true, debugBot = false) {
     let botId = DATA_USER.botId;
 
     // admin botId select override
-    if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId === $('#selBot :selected').val()) {
+    if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId !== $('#selBot :selected').val()) {
       botId = $('#selBot :selected').val();
     }
     updateBotCode(botId, $('#selBotVersion :selected').val(), botCode);
