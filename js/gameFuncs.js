@@ -3,8 +3,8 @@
 /* eslint-disable no-unused-vars */
 const MAZE_URL = 'http://mazemasterjs.com/api/maze';
 // const GAME_URL = 'http://game-server-maze-master-js.b9ad.pro-us-east-1.openshiftapps.com/game';
-const GAME_URL = 'http://mazemasterjs.com/game';
-// const GAME_URL = 'http://localhost:8080/game';
+// const GAME_URL = 'http://mazemasterjs.com/game';
+const GAME_URL = 'http://localhost:8080/game';
 const TEAM_URL = 'http://mazemasterjs.com/api/team';
 
 // global configuration vars
@@ -432,6 +432,9 @@ function versionBotCode(botId, code) {
   const GET_BOT_CODE_URL = TEAM_URL + '/get/botCode?botId=' + botId;
   const PUT_BOT_CODE_URL = TEAM_URL + '/insert/botCode';
 
+  // first, format the code in the editor
+  editor.trigger('', 'editor.action.formatDocument');
+
   $.ajax({
     url: GET_BOT_CODE_URL,
     dataType: 'json',
@@ -709,6 +712,7 @@ async function startBot(stepBot = true, debugBot = false) {
 
   // validate and report errors - if any are found, do not continue
   if (!validateSyntax()) {
+    setBotButtonStates(true);
     return;
   }
 
@@ -720,7 +724,11 @@ async function startBot(stepBot = true, debugBot = false) {
     if (DATA_USER.role > USER_ROLES.USER && DATA_USER.botId !== $('#selBot :selected').val()) {
       botId = $('#selBot :selected').val();
     }
-    updateBotCode(botId, $('#selBotVersion :selected').val(), botCode);
+
+    // don't update on debug - break points cause the ajax call to timeout
+    if (!debugBot) {
+      updateBotCode(botId, $('#selBotVersion :selected').val(), botCode);
+    }
   }
 
   // make sure there's some code to run
@@ -777,41 +785,43 @@ async function startBot(stepBot = true, debugBot = false) {
  */
 async function runBot(botCode, stepBot, debugBot) {
   if (DBG) console.log('runBot', botCode.length, stepBot, debugBot);
-
-  const injectionTag = '\n// @INJECTED_CODE\n';
-  const strictScript = '"use strict";\n\n';
-  const debugStart = injectionTag + '\nbotCallback = null;\ngoBot(lastActionResult);';
-  const stepStart = injectionTag + '\nbotCallback = null;\ngoBot(lastActionResult);';
-  const loopStart = injectionTag + '\nbotCallback = goBot;\ngoBot(lastActionResult);';
-  const debugScript = injectionTag + 'debugger;\n';
+  const injectTag = ' // @INJECTED\n';
+  const strictScript = '"use strict";' + injectTag;
+  const gdDeclareScript = 'let GameData = {};' + injectTag;
+  const debugStart = `\nbotCallback = null;${injectTag}\ngoBot(reformatData(lastActionResult));${injectTag}`;
+  const stepStart = `\nbotCallback = null;${injectTag}\ngoBot(reformatData(lastActionResult));${injectTag}`;
+  const loopStart = `\nbotCallback = goBot;${injectTag}\ngoBot(reformatData(lastActionResult))${injectTag}`;
+  const gdMapScript = '\nObject.assign(GameData, data);' + injectTag;
+  const debugScript = '\ndebugger;' + injectTag;
 
   // inject script values appropriate to the run time selected
+  const insKey = 'function goBot(data) {';
+  const insAt = botCode.indexOf(insKey);
+  const bcTop = botCode.substr(0, insAt + insKey.length);
+  const bcBot = botCode.substr(insAt + insKey.length);
   if (debugBot) {
-    if (botCode.indexOf('debugger;') === -1) {
-      const insKey = 'function goBot(data) {';
-      const insAt = botCode.indexOf(insKey);
-      const bcTop = botCode.substr(0, insAt + insKey.length);
-      const bcBot = botCode.substr(insAt + insKey.length);
-      botCode = bcTop + debugScript + bcBot + debugStart;
-    } else {
-      botCode = botCode + debugStart;
-    }
+    botCode = bcTop + gdMapScript + debugScript + bcBot;
+    botCode = botCode + debugStart;
   } else if (stepBot) {
+    botCode = bcTop + gdMapScript + bcBot;
     botCode = botCode.replace(/debugger;/g, '');
     botCode = botCode + stepStart;
   } else {
+    botCode = bcTop + gdMapScript + bcBot;
     botCode = botCode.replace(/debugger;/g, '');
     botCode = botCode + loopStart;
   }
 
   // force use of strict mode
   if (botCode.indexOf('"use strict";') === -1) {
-    botCode = strictScript + botCode;
+    botCode = strictScript + gdDeclareScript + botCode;
+  } else {
+    botCode = gdDeclareScript + botCode;
   }
 
   try {
     // convert the bot text to a js function
-    if (DBG) console.log(`runBot(${stepBot}, ${debugBot}) : Creating botFn.`);
+    if (DBG) console.log(`runBot(${stepBot}, ${debugBot}) : Creating botFn, botCode ->`, '\n' + botCode);
     const botFn = new Function(botCode);
     clearInterval(botCallBackTimer);
     botCallBackTimer = setInterval(callbackTimeout, CALLBACK_TIMEOUT); // safety check for bots that fall out of the function (or get stuck) before sending an action
@@ -1298,11 +1308,20 @@ function setSaveButtonStates(enabled) {
     $('#btnSaveBotCode').removeClass('btnDisabled');
     $('#btnSaveBotCode').addClass('btnEnabled');
     $('#btnSaveBotCode').attr('title', 'Save Bot (shortcut: [CTRL + S] in editor');
+
+    // botcode is dirty - bind the unload warning event
+    window.onbeforeunload = function(e) {
+      e.preventDefault();
+      e.returnValue = '';
+    };
   } else {
     $('#btnSaveBotCode').attr('disabled', true);
     $('#btnSaveBotCode').addClass('btnDisabled');
     $('#btnSaveBotCode').removeClass('btnEnabled');
     $('#btnSaveBotCode').attr('title', '');
+
+    // botcode saved, unbind the unload warning event
+    window.onbeforeunload = function() {};
   }
 
   // force hide any potentially stuck tooltips
@@ -1381,7 +1400,7 @@ async function SendAction(action) {
         if (botCallback !== null && data.game.score.gameResult === GAME_RESULTS.IN_PROGRESS) {
           clearInterval(botCallBackTimer);
           botCallBackTimer = setInterval(callbackTimeout, CALLBACK_TIMEOUT); // safety check for bots that fall out of the function (or get stuck) before sending an action
-          botCallback(data);
+          botCallback(reformatData(data));
         } else {
           if (DBG) console.log(method, 'Chain Stopped. gameResult=', data.game.score.gameResult, 'botCallback == null? ' + botCallback === null);
           setBotButtonStates(true);
@@ -1399,6 +1418,67 @@ async function SendAction(action) {
         setBotButtonStates(true);
       }
     });
+}
+
+/**
+ * Reformats an actionResult to be more intuitive and less verbose
+ *
+ * @param {*} data
+ * @return {*}
+ */
+function reformatData(data) {
+  if (DBG) console.log('reformatData(data)', data);
+  const nData = {};
+  nData.player = {};
+
+  // clear out some unused data elements
+  delete data.action.engram.here.intuition;
+  delete data.action.engram.here.items;
+
+  // outcomes
+  nData.outcomes = data.action.outcomes;
+
+  // map player data
+  nData.player.facing = data.playerFacing;
+  nData.player.state = data.playerState;
+  nData.player.health = data.action.playerLife;
+
+  // the here engrams
+  nData.room = data.action.engram.here;
+
+  nData.see = {};
+  nData.see.north = data.action.engram.north.see;
+  nData.see.south = data.action.engram.south.see;
+  nData.see.east = data.action.engram.east.see;
+  nData.see.west = data.action.engram.west.see;
+
+  nData.hear = {};
+  nData.hear.north = data.action.engram.north.hear;
+  nData.hear.south = data.action.engram.south.hear;
+  nData.hear.east = data.action.engram.east.hear;
+  nData.hear.west = data.action.engram.west.hear;
+
+  nData.smell = {};
+  nData.smell.north = data.action.engram.north.smell;
+  nData.smell.south = data.action.engram.south.smell;
+  nData.smell.east = data.action.engram.east.smell;
+  nData.smell.west = data.action.engram.west.smell;
+
+  nData.touch = {};
+  nData.touch.north = data.action.engram.north.touch;
+  nData.touch.south = data.action.engram.south.touch;
+  nData.touch.east = data.action.engram.east.touch;
+  nData.touch.west = data.action.engram.west.touch;
+
+  nData.taste = {};
+  nData.taste.north = data.action.engram.north.taste;
+  nData.taste.south = data.action.engram.south.taste;
+  nData.taste.east = data.action.engram.east.taste;
+  nData.taste.west = data.action.engram.west.taste;
+
+  if (DBG) console.log('reformatData(data) -> return ->', nData);
+
+  return nData;
 }
 
 /**
