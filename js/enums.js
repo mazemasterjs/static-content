@@ -1,4 +1,11 @@
 /* eslint-disable no-unused-vars */
+
+const LOG_TYPES = {
+  BOT: 'bot',
+  WARN: 'wrn',
+  ERROR: 'err',
+};
+
 const TROPHY_IDS = {
   CHEDDAR_DINNER: 0,
   DAZED_AND_CONFUSED: 1,
